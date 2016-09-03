@@ -67,3 +67,13 @@ void init_trackbars() {
     createTrackbar("V1 Red", "Arena Trackbars", &red.v_low, 256);
     createTrackbar("V2 Red", "Arena Trackbars", &red.v_high, 256);
 }
+
+void init_hsvcolor() {
+    yellow = {0, 0, 0, 0, 0, 0};
+    green = {0, 0, 0, 0, 0, 0};
+    blue = {0, 0, 0, 0, 0, 0};
+    brown = {0, 0, 0, 0, 0, 0};
+    red = {0, 0, 0, 0, 0, 0};
+    head = {0, 0, 0, 0, 0, 0};
+    tail = {0, 0, 0, 0, 0, 0};
+}
