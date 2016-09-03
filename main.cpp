@@ -10,7 +10,7 @@
 using namespace cv;
 using namespace std;
 
-Mat src, imgHSV;
+Mat src, imgHSV, yellow_img, green_img, blue_img, brown_img, red_img, head_img, tail_img;
 
 struct hsv_trackbar {
     int h_low;
@@ -76,4 +76,35 @@ void init_hsvcolor() {
     red = {0, 0, 0, 0, 0, 0};
     head = {0, 0, 0, 0, 0, 0};
     tail = {0, 0, 0, 0, 0, 0};
+}
+
+int main(int argc, const char **argv) {
+    VideoCapture cap(1);
+
+    while(1) {
+        cap >> src;
+        cvtColor(src, imgHSV, CV_BGR2HSV);
+        inRange(imgHSV, Scalar(yellow.h_low, yellow.s_low, yellow.v_low),
+                Scalar(yellow.h_high, yellow.s_high, yellow.v_high), yellow_img);
+        inRange(imgHSV, Scalar(green.h_low, green.s_low, green.v_low),
+                Scalar(green.h_high, green.s_high, green.v_high), green_img);
+        inRange(imgHSV, Scalar(blue.h_low, blue.s_low, blue.v_low),
+                Scalar(blue.h_high, blue.s_high, blue.v_high), blue_img);
+        inRange(imgHSV, Scalar(brown.h_low, brown.s_low, brown.v_low),
+                Scalar(brown.h_high, brown.s_high, brown.v_high), brown_img);
+        inRange(imgHSV, Scalar(red.h_low, red.s_low, red.v_low),
+                Scalar(red.h_high, red.s_high, red.v_high), red_img);
+        inRange(imgHSV, Scalar(head.h_low, head.s_low, head.v_low),
+                Scalar(head.h_high, head.s_high, head.v_high), head_img);
+        inRange(imgHSV, Scalar(tail.h_low, tail.s_low, tail.v_low),
+                Scalar(tail.h_high, tail.s_high, tail.v_high), tail_img);
+
+        imshow("Head", head_img);
+        imshow("Tail", tail_img);
+        imshow("Yellow" yellow_img);
+        imshow("Green", green_img);
+        imshow("Blue", blue_img);
+        imshow("Brown", brown_img);
+        imshow("Red", red_img);
+    }
 }
