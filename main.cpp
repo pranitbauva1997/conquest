@@ -15,10 +15,10 @@ Mat src, imgHSV, yellow_img, green_img, blue_img, brown_img, red_img, head_img, 
 struct hsv_trackbar {
     int h_low;
     int h_high;
-    int l_low;
-    int l_high;
+    int s_low;
+    int s_high;
     int v_low;
-    int l_high;
+    int v_high;
 } yellow, green, blue, brown, red, head, tail;
 
 void init_trackbars() {
@@ -27,15 +27,15 @@ void init_trackbars() {
     createTrackbar("H1 Head", "Bot Trackbars", &head.h_low, 256);
     createTrackbar("H2 Head", "Bot Trackbars", &head.h_high, 256);
     createTrackbar("S1 Head", "Bot Trackbars", &head.s_low, 256);
-    createTrackbar("S2 Head", "Bot Trackbars", &heads.s_high, 256);
-    createTrackbar("V1 Head", "Bot Trackbars", &heads.v_low, 256);
-    createTrackbar("V2 Head", "Bot Trackbars", &heads.v_high, 256);
+    createTrackbar("S2 Head", "Bot Trackbars", &head.s_high, 256);
+    createTrackbar("V1 Head", "Bot Trackbars", &head.v_low, 256);
+    createTrackbar("V2 Head", "Bot Trackbars", &head.v_high, 256);
     createTrackbar("H1 Tail", "Bot Trackbars", &tail.h_low, 256);
     createTrackbar("H2 Tail", "Bot Trackbars", &tail.h_high, 256);
     createTrackbar("S1 Tail", "Bot Trackbars", &tail.s_low, 256);
-    createTrackbar("S2 Tail", "Bot Trackbars", &tails.s_high, 256);
-    createTrackbar("V1 Tail", "Bot Trackbars", &tails.v_low, 256);
-    createTrackbar("V2 Tail", "Bot Trackbars", &tails.v_high, 256);
+    createTrackbar("S2 Tail", "Bot Trackbars", &tail.s_high, 256);
+    createTrackbar("V1 Tail", "Bot Trackbars", &tail.v_low, 256);
+    createTrackbar("V2 Tail", "Bot Trackbars", &tail.v_high, 256);
     createTrackbar("H1 Yellow", "Arena Trackbars", &yellow.h_low, 256);
     createTrackbar("H2 Yellow", "Arena Trackbars", &yellow.h_high, 256);
     createTrackbar("S1 Yellow", "Arena Trackbars", &yellow.s_low, 256);
