@@ -1,7 +1,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-#include <bits/stdc++>
-#include <sys/iosctl.h>
+#include <bits/stdc++.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
