@@ -69,13 +69,40 @@ void init_trackbars() {
 }
 
 void init_hsvcolor() {
-    yellow = {0, 0, 0, 0, 0, 0};
-    green = {0, 0, 0, 0, 0, 0};
-    blue = {0, 0, 0, 0, 0, 0};
-    brown = {0, 0, 0, 0, 0, 0};
-    red = {0, 0, 0, 0, 0, 0};
-    head = {0, 0, 0, 0, 0, 0};
-    tail = {0, 0, 0, 0, 0, 0};
+    yellow.h_low = 0;
+    yellow.h_high = 0;
+    yellow.s_low = 0;
+    yellow.s_high = 0;
+    yellow.v_low = 0;
+    yellow.v_high = 0;
+    green.h_low = 0;
+    green.h_high = 0;
+    green.s_low = 0;
+    green.s_high = 0;
+    green.v_low = 0;
+    green.v_high = 0;
+    brown.h_low = 0;
+    brown.h_high = 0;
+    brown.s_low = 0;
+    brown.s_high = 0;
+    red.h_low = 0;
+    red.h_high = 0;
+    red.s_low = 0;
+    red.s_high = 0;
+    red.v_low = 0;
+    red.v_high = 0;
+    head.h_low = 0;
+    head.h_high = 0;
+    head.s_low = 0;
+    head.s_high = 0;
+    head.v_low = 0;
+    head.v_high = 0;
+    tail.h_low = 0;
+    tail.h_high = 0;
+    tail.s_low = 0;
+    tail.s_high = 0;
+    tail.v_low = 0;
+    tail.v_high = 0;
 }
 
 int main(int argc, const char **argv) {
