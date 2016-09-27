@@ -10,7 +10,14 @@
 using namespace cv;
 using namespace std;
 
-Mat src, imgHSV, yellow_img, green_img, blue_img, brown_img, red_img, head_img, tail_img;
+Mat src, src_gray, imgHSV, yellow_img, green_img, blue_img, brown_img, red_img, head_img, tail_img;
+Mat yellow_img_gray, green_img_gray, blue_img_gray, brown_img_gray, red_img_gray, head_img_gray, tail_img_gray;
+Mat yellow_img_poly, green_img_poly, blue_img_poly, brown_img_poly, red_img_poly, head_img_poly, tail_img_poly;
+Mat drawing;
+
+int binary_thresh = 100;
+
+RNG rng(12345);
 
 struct hsv_trackbar {
     int h_low;
@@ -20,6 +27,9 @@ struct hsv_trackbar {
     int v_low;
     int v_high;
 } yellow, green, blue, brown, red, head, tail;
+
+/* @function thresh_callback */
+void thresh_callback(int, void *);
 
 void init_trackbars() {
     namedWindow("Bot Trackbars", 1);
@@ -108,6 +118,14 @@ void init_hsvcolor() {
 int main(int argc, const char **argv) {
     VideoCapture cap(1);
 
+    if (!cap.isOpened()) {
+        fprintf(stderr, "ERROR!\n");
+        return -1;
+    }
+
+    init_trackbars();
+    init_hsvcolor();
+
     while(1) {
         cap >> src;
         cvtColor(src, imgHSV, CV_BGR2HSV);
@@ -126,12 +144,110 @@ int main(int argc, const char **argv) {
         inRange(imgHSV, Scalar(tail.h_low, tail.s_low, tail.v_low),
                 Scalar(tail.h_high, tail.s_high, tail.v_high), tail_img);
 
+        imshow("Source", src);
         imshow("Head", head_img);
         imshow("Tail", tail_img);
-        imshow("Yellow" yellow_img);
+        imshow("Yellow", yellow_img);
         imshow("Green", green_img);
         imshow("Blue", blue_img);
         imshow("Brown", brown_img);
         imshow("Red", red_img);
+
+        createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
+        thresh_callback(0, 0);
     }
+
+    return 0;
+}
+
+void thresh_callback(int, void *) {
+    Mat threshold_output;
+    vector<vector<Point> > head_contours, tail_contours, yellow_contours, green_contours, blue_contours, brown_contours, red_contours;
+    vector<Vec4i> head_hierarchy, tail_hierarchy, yellow_hierarchy, green_hierarchy, blue_hierarchy, brown_hierarchy, red_hierarchy;
+
+    /* Detect edges in all using Threshold */
+    threshold(head_img, head_img_gray, 100, 255, THRESH_BINARY);
+    threshold(tail_img, tail_img_gray, 100, 255, THRESH_BINARY);
+    threshold(yellow_img, yellow_img_gray, 100, 255, THRESH_BINARY);
+    threshold(green_img, green_img_gray, 100, 255, THRESH_BINARY);
+    threshold(brown_img, brown_img_gray, 100, 255, THRESH_BINARY);
+    threshold(red_img, red_img_gray, 100, 255, THRESH_BINARY);
+
+    /* Find contours */
+    findContours(head_img_gray, head_contours, head_hierarchy, CV_RETR_TREE,
+                 CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+    findContours(tail_img_gray, tail_contours, tail_hierarchy, CV_RETR_TREE,
+                 CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+    findContours(yellow_img_gray, yellow_contours, yellow_hierarchy,
+                 CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+    findContours(green_img_gray, green_contours, green_hierarchy,
+                 CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+    findContours(brown_img_gray, brown_contours, brown_hierarchy,
+                 CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+    findContours(red_img_gray, red_contours, red_hierarchy,
+                 CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+    vector<vector<Point> > head_contours_poly(head_contours.size());
+    vector<vector<Point> > tail_contours_poly(tail_contours.size());
+    vector<vector<Point> > yellow_contours_poly(yellow_contours.size());
+    vector<vector<Point> > green_contours_poly(green_contours.size());
+    vector<vector<Point> > brown_contours_poly(brown_contours.size());
+    vector<vector<Point> > red_contours_poly(red_contours.size());
+
+    vector<Rect> headBoundRect(head_contours.size());
+    vector<Rect> tailBoundRect(tail_contours.size());
+    vector<Rect> yellowBoundRect(yellow_contours.size());
+    vector<Rect> greenBoundRect(green_contours.size());
+    vector<Rect> brownBoundRect(brown_contours.size());
+    vector<Rect> redBoundRect(red_contours.size());
+
+    for (int i = 0; i < head_contours.size(); i++) {
+        approxPolyDP(Mat(head_contours[i]), head_contours_poly[i], 3, true);
+        headBoundRect[i] = boundingRect(Mat(head_contours_poly[i]));
+    }
+
+    for (int i = 0; i < tail_contours.size(); i++) {
+        approxPolyDP(Mat(tail_contours[i]), tail_contours_poly[i], 3, true);
+        tailBoundRect[i] = boundingRect(Mat(tail_contours_poly[i]));
+    }
+
+    for (int i = 0; i < yellow_contours.size(); i++) {
+        approxPolyDP(Mat(yellow_contours[i]), yellow_contours_poly[i], 3, true);
+        yellowBoundRect[i] = boundingRect(Mat(yellow_contours_poly[i]));
+    }
+
+    for (int i = 0; i < green_contours.size(); i++) {
+        approxPolyDP(Mat(green_contours[i]), green_contours_poly[i], 3, true);
+        greenBoundRect[i] = boundingRect(Mat(green_contours_poly[i]));
+    }
+
+    for (int i = 0; i < brown_contours.size(); i++) {
+        approxPolyDP(Mat(brown_contours[i]), brown_contours_poly[i], 3, true);
+        brownBoundRect[i] = boundingRect(Mat(brown_contours_poly[i]));
+    }
+
+    for (int i = 0; i < red_contours.size(); i++) {
+        approxPolyDP(Mat(red_contours[i]), red_contours_poly[i], 3, true);
+        redBoundRect[i] = boundingRect(Mat(red_contours_poly[i]));
+    }
+
+    drawing = Mat::zeros(src_gray.size(), CV_8UC3);
+    for (int i = 0; i < head_contours.size(); i++) {
+        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+        drawContours(drawing, head_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(drawing, headBoundRect[i].tl(), headBoundRect[i].br(), color, 2, 8, 0);
+    }
+    for (int i = 0; i < tail_contours.size(); i++) {
+        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+        drawContours(drawing, tail_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(drawing, tailBoundRect[i].tl(), tailBoundRect[i].br(), color, 2, 8, 0);
+    }
+    for (int i = 0; i < yellow_contours.size(); i++) {
+        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+        drawContours(drawing, yellow_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(drawing, yellowBoundRect[i].tl(), yellowBoundRect[i].br(), color, 2, 8, 0);
+    }
+
+    namedWindow("Contours", CV_WINDOW_AUTOSIZE);
+    imshow("Contours", drawing);
 }
