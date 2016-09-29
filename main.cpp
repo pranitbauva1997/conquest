@@ -13,7 +13,7 @@ using namespace std;
 Mat src, src_gray, imgHSV, yellow_img, green_img, blue_img, brown_img, red_img, head_img, tail_img;
 Mat yellow_img_gray, green_img_gray, blue_img_gray, brown_img_gray, red_img_gray, head_img_gray, tail_img_gray;
 Mat yellow_img_poly, green_img_poly, blue_img_poly, brown_img_poly, red_img_poly, head_img_poly, tail_img_poly;
-Mat drawing;
+Mat yellow_drawing, green_drawing, blue_drawing, brown_drawing, red_drawing, head_drawing, tail_drawing;
 
 int binary_thresh = 100;
 
@@ -33,58 +33,62 @@ void thresh_callback(int, void *);
 
 void init_trackbars() {
     namedWindow("Bot Trackbars", 1);
-    namedWindow("Arena Trackbars", 1);
-    createTrackbar("H1 Head", "Bot Trackbars", &head.h_low, 256);
-    createTrackbar("H2 Head", "Bot Trackbars", &head.h_high, 256);
-    createTrackbar("S1 Head", "Bot Trackbars", &head.s_low, 256);
-    createTrackbar("S2 Head", "Bot Trackbars", &head.s_high, 256);
-    createTrackbar("V1 Head", "Bot Trackbars", &head.v_low, 256);
-    createTrackbar("V2 Head", "Bot Trackbars", &head.v_high, 256);
-    createTrackbar("H1 Tail", "Bot Trackbars", &tail.h_low, 256);
-    createTrackbar("H2 Tail", "Bot Trackbars", &tail.h_high, 256);
-    createTrackbar("S1 Tail", "Bot Trackbars", &tail.s_low, 256);
-    createTrackbar("S2 Tail", "Bot Trackbars", &tail.s_high, 256);
-    createTrackbar("V1 Tail", "Bot Trackbars", &tail.v_low, 256);
-    createTrackbar("V2 Tail", "Bot Trackbars", &tail.v_high, 256);
-    createTrackbar("H1 Yellow", "Arena Trackbars", &yellow.h_low, 256);
-    createTrackbar("H2 Yellow", "Arena Trackbars", &yellow.h_high, 256);
-    createTrackbar("S1 Yellow", "Arena Trackbars", &yellow.s_low, 256);
-    createTrackbar("S2 Yellow", "Arena Trackbars", &yellow.s_high, 256);
-    createTrackbar("V1 Yellow", "Arena Trackbars", &yellow.v_low, 256);
-    createTrackbar("V2 Yellow", "Arena Trackbars", &yellow.v_high, 256);
-    createTrackbar("H1 Green", "Arena Trackbars", &green.h_low, 256);
-    createTrackbar("H2 Green", "Arena Trackbars", &green.h_high, 256);
-    createTrackbar("S1 Green", "Arena Trackbars", &green.s_low, 256);
-    createTrackbar("S2 Green", "Arena Trackbars", &green.s_high, 256);
-    createTrackbar("V1 Green", "Arena Trackbars", &green.v_low, 256);
-    createTrackbar("V2 Green", "Arena Trackbars", &green.v_high, 256);
-    createTrackbar("H1 Blue", "Arena Trackbars", &blue.h_low, 256);
-    createTrackbar("H2 Blue", "Arena Trackbars", &blue.h_high, 256);
-    createTrackbar("S1 Blue", "Arena Trackbars", &blue.s_low, 256);
-    createTrackbar("S2 Blue", "Arena Trackbars", &blue.s_high, 256);
-    createTrackbar("V1 Blue", "Arena Trackbars", &blue.v_low, 256);
-    createTrackbar("V2 Blue", "Arena Trackbars", &blue.v_high, 256);
-    createTrackbar("H1 Brown", "Arena Trackbars", &brown.h_low, 256);
-    createTrackbar("H2 Brown", "Arena Trackbars", &brown.h_high, 256);
-    createTrackbar("S1 Brown", "Arena Trackbars", &brown.s_low, 256);
-    createTrackbar("S2 Brown", "Arena Trackbars", &brown.s_high, 256);
-    createTrackbar("V1 Brown", "Arena Trackbars", &brown.v_low, 256);
-    createTrackbar("V2 Brown", "Arena Trackbars", &brown.v_high, 256);
-    createTrackbar("H1 Red", "Arena Trackbars", &red.h_low, 256);
-    createTrackbar("H2 Red", "Arena Trackbars", &red.h_high, 256);
-    createTrackbar("S1 Red", "Arena Trackbars", &red.s_low, 256);
-    createTrackbar("S2 Red", "Arena Trackbars", &red.s_high, 256);
-    createTrackbar("V1 Red", "Arena Trackbars", &red.v_low, 256);
-    createTrackbar("V2 Red", "Arena Trackbars", &red.v_high, 256);
+    namedWindow("Yellow Trackbars", 1);
+    namedWindow("Green Trackbars", 1);
+    namedWindow("Blue Trackbars", 1);
+    namedWindow("Brown Trackbars", 1);
+    namedWindow("Red Trackbars", 1);
+    createTrackbar("H1 Head", "Bot Trackbars", &head.h_low, 255);
+    createTrackbar("H2 Head", "Bot Trackbars", &head.h_high, 255);
+    createTrackbar("S1 Head", "Bot Trackbars", &head.s_low, 255);
+    createTrackbar("S2 Head", "Bot Trackbars", &head.s_high, 255);
+    createTrackbar("V1 Head", "Bot Trackbars", &head.v_low, 255);
+    createTrackbar("V2 Head", "Bot Trackbars", &head.v_high, 255);
+    createTrackbar("H1 Tail", "Bot Trackbars", &tail.h_low, 255);
+    createTrackbar("H2 Tail", "Bot Trackbars", &tail.h_high, 255);
+    createTrackbar("S1 Tail", "Bot Trackbars", &tail.s_low, 255);
+    createTrackbar("S2 Tail", "Bot Trackbars", &tail.s_high, 255);
+    createTrackbar("V1 Tail", "Bot Trackbars", &tail.v_low, 255);
+    createTrackbar("V2 Tail", "Bot Trackbars", &tail.v_high, 255);
+    createTrackbar("H1 Yellow", "Yellow Trackbars", &yellow.h_low, 255);
+    createTrackbar("H2 Yellow", "Yellow Trackbars", &yellow.h_high, 255);
+    createTrackbar("S1 Yellow", "Yellow Trackbars", &yellow.s_low, 255);
+    createTrackbar("S2 Yellow", "Yellow Trackbars", &yellow.s_high, 255);
+    createTrackbar("V1 Yellow", "Yellow Trackbars", &yellow.v_low, 255);
+    createTrackbar("V2 Yellow", "Yellow Trackbars", &yellow.v_high, 255);
+    createTrackbar("H1 Green", "Green Trackbars", &green.h_low, 255);
+    createTrackbar("H2 Green", "Green Trackbars", &green.h_high, 255);
+    createTrackbar("S1 Green", "Green Trackbars", &green.s_low, 255);
+    createTrackbar("S2 Green", "Green Trackbars", &green.s_high, 255);
+    createTrackbar("V1 Green", "Green Trackbars", &green.v_low, 255);
+    createTrackbar("V2 Green", "Green Trackbars", &green.v_high, 255);
+    createTrackbar("H1 Blue", "Blue Trackbars", &blue.h_low, 255);
+    createTrackbar("H2 Blue", "Blue Trackbars", &blue.h_high, 255);
+    createTrackbar("S1 Blue", "Blue Trackbars", &blue.s_low, 255);
+    createTrackbar("S2 Blue", "Blue Trackbars", &blue.s_high, 255);
+    createTrackbar("V1 Blue", "Blue Trackbars", &blue.v_low, 255);
+    createTrackbar("V2 Blue", "Blue Trackbars", &blue.v_high, 255);
+    createTrackbar("H1 Brown", "Brown Trackbars", &brown.h_low, 255);
+    createTrackbar("H2 Brown", "Brown Trackbars", &brown.h_high, 255);
+    createTrackbar("S1 Brown", "Brown Trackbars", &brown.s_low, 255);
+    createTrackbar("S2 Brown", "Brown Trackbars", &brown.s_high, 255);
+    createTrackbar("V1 Brown", "Brown Trackbars", &brown.v_low, 255);
+    createTrackbar("V2 Brown", "Brown Trackbars", &brown.v_high, 255);
+    createTrackbar("H1 Red", "Red Trackbars", &red.h_low, 255);
+    createTrackbar("H2 Red", "Red Trackbars", &red.h_high, 255);
+    createTrackbar("S1 Red", "Red Trackbars", &red.s_low, 255);
+    createTrackbar("S2 Red", "Red Trackbars", &red.s_high, 255);
+    createTrackbar("V1 Red", "Red Trackbars", &red.v_low, 255);
+    createTrackbar("V2 Red", "Red Trackbars", &red.v_high, 255);
 }
 
 void init_hsvcolor() {
-    yellow.h_low = 0;
-    yellow.h_high = 0;
-    yellow.s_low = 0;
-    yellow.s_high = 0;
+    yellow.h_low = 4;
+    yellow.h_high = 58;
+    yellow.s_low = 97;
+    yellow.s_high = 255;
     yellow.v_low = 0;
-    yellow.v_high = 0;
+    yellow.v_high = 255;
     green.h_low = 0;
     green.h_high = 0;
     green.s_low = 0;
@@ -92,9 +96,11 @@ void init_hsvcolor() {
     green.v_low = 0;
     green.v_high = 0;
     brown.h_low = 0;
-    brown.h_high = 0;
-    brown.s_low = 0;
-    brown.s_high = 0;
+    brown.h_high = 17;
+    brown.s_low = 43;
+    brown.s_high = 94;
+    brown.v_low = 188;
+    brown.v_high = 217;
     red.h_low = 0;
     red.h_high = 0;
     red.s_low = 0;
@@ -113,18 +119,24 @@ void init_hsvcolor() {
     tail.s_high = 0;
     tail.v_low = 0;
     tail.v_high = 0;
+    blue.h_low = 47;
+    blue.h_high = 100;
+    blue.s_low = 0;
+    blue.s_high = 18;
+    blue.v_low = 235;
+    blue.v_high = 255;
 }
 
 int main(int argc, const char **argv) {
-    VideoCapture cap(1);
+    VideoCapture cap(0);
 
     if (!cap.isOpened()) {
         fprintf(stderr, "ERROR!\n");
         return -1;
     }
 
-    init_trackbars();
     init_hsvcolor();
+    init_trackbars();
 
     while(1) {
         cap >> src;
@@ -153,8 +165,12 @@ int main(int argc, const char **argv) {
         imshow("Brown", brown_img);
         imshow("Red", red_img);
 
-        createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
-        thresh_callback(0, 0);
+        yellow_drawing = Mat::zeros(src.size(), CV_8UC3);
+        imshow("Yellow Drawing", yellow_drawing);
+
+        //createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
+        //thresh_callback(0, 0);
+        waitKey(70);
     }
 
     return 0;
@@ -191,6 +207,7 @@ void thresh_callback(int, void *) {
     vector<vector<Point> > tail_contours_poly(tail_contours.size());
     vector<vector<Point> > yellow_contours_poly(yellow_contours.size());
     vector<vector<Point> > green_contours_poly(green_contours.size());
+    vector<vector<Point> > blue_contours_poly(blue_contours.size());
     vector<vector<Point> > brown_contours_poly(brown_contours.size());
     vector<vector<Point> > red_contours_poly(red_contours.size());
 
@@ -198,6 +215,7 @@ void thresh_callback(int, void *) {
     vector<Rect> tailBoundRect(tail_contours.size());
     vector<Rect> yellowBoundRect(yellow_contours.size());
     vector<Rect> greenBoundRect(green_contours.size());
+    vector<Rect> blueBoundRect(blue_contours.size());
     vector<Rect> brownBoundRect(brown_contours.size());
     vector<Rect> redBoundRect(red_contours.size());
 
@@ -214,11 +232,17 @@ void thresh_callback(int, void *) {
     for (int i = 0; i < yellow_contours.size(); i++) {
         approxPolyDP(Mat(yellow_contours[i]), yellow_contours_poly[i], 3, true);
         yellowBoundRect[i] = boundingRect(Mat(yellow_contours_poly[i]));
+        printf("%d\n", i);
     }
 
     for (int i = 0; i < green_contours.size(); i++) {
         approxPolyDP(Mat(green_contours[i]), green_contours_poly[i], 3, true);
         greenBoundRect[i] = boundingRect(Mat(green_contours_poly[i]));
+    }
+
+    for (int i = 0; i < blue_contours.size(); i++) {
+        approxPolyDP(Mat(blue_contours[i]), blue_contours_poly[i], 3, true);
+        blueBoundRect[i] = boundingRect(Mat(blue_contours_poly[i]));
     }
 
     for (int i = 0; i < brown_contours.size(); i++) {
@@ -231,23 +255,81 @@ void thresh_callback(int, void *) {
         redBoundRect[i] = boundingRect(Mat(red_contours_poly[i]));
     }
 
-    drawing = Mat::zeros(src_gray.size(), CV_8UC3);
+    head_drawing = Mat::zeros(src_gray.size(), CV_8UC3);
+    tail_drawing = Mat::zeros(src_gray.size(), CV_8UC3);
+    green_drawing = Mat::zeros(src_gray.size(), CV_8UC3);
+    blue_drawing = Mat::zeros(src_gray.size(), CV_8UC3);
+    brown_drawing = Mat::zeros(src_gray.size(), CV_8UC3);
+    red_drawing = Mat::zeros(src_gray.size(), CV_8UC3);
+
     for (int i = 0; i < head_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-        drawContours(drawing, head_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
-        rectangle(drawing, headBoundRect[i].tl(), headBoundRect[i].br(), color, 2, 8, 0);
+        drawContours(head_drawing, head_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(head_drawing, headBoundRect[i].tl(), headBoundRect[i].br(), color, 2, 8, 0);
     }
     for (int i = 0; i < tail_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-        drawContours(drawing, tail_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
-        rectangle(drawing, tailBoundRect[i].tl(), tailBoundRect[i].br(), color, 2, 8, 0);
+        drawContours(tail_drawing, tail_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(tail_drawing, tailBoundRect[i].tl(), tailBoundRect[i].br(), color, 2, 8, 0);
     }
     for (int i = 0; i < yellow_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-        drawContours(drawing, yellow_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
-        rectangle(drawing, yellowBoundRect[i].tl(), yellowBoundRect[i].br(), color, 2, 8, 0);
+        drawContours(yellow_drawing, yellow_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(yellow_drawing, yellowBoundRect[i].tl(), yellowBoundRect[i].br(), color, 2, 8, 0);
+    }
+    for (int i = 0; i < green_contours.size(); i++) {
+        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+        drawContours(green_drawing, green_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(green_drawing, greenBoundRect[i].tl(), greenBoundRect[i].br(), color, 2, 8, 0);
+    }
+    for (int i = 0; i < blue_contours.size(); i++) {
+        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+        drawContours(blue_drawing, blue_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(blue_drawing, blueBoundRect[i].tl(), blueBoundRect[i].br(), color, 2, 8, 0);
+    }
+    for (int i = 0; i < red_contours.size(); i++) {
+        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+        drawContours(red_drawing, red_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(red_drawing, redBoundRect[i].tl(), redBoundRect[i].br(), color, 2, 8, 0);
+    }
+    for (int i = 0; i < brown_contours.size(); i++) {
+        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+        drawContours(brown_drawing, brown_contours_poly, i, color, 1, 8, vector<Vec4i>(), 0, Point());
+        rectangle(brown_drawing, brownBoundRect[i].tl(), brownBoundRect[i].br(), color, 2, 8, 0);
     }
 
-    namedWindow("Contours", CV_WINDOW_AUTOSIZE);
-    imshow("Contours", drawing);
+    imshow("Head Contours", head_drawing);
+    imshow("Tail Contours", tail_drawing);
+    imshow("Yellow Contours", yellow_drawing);
+    imshow("Green Contours", green_drawing);
+    imshow("Blue Contours", blue_drawing);
+    imshow("Brown Contours", brown_drawing);
+    imshow("Red Contours", red_drawing);
+
+    /*
+    vector<vector<Point> > food;
+    vector<vector<Point> > wood;
+    vector<vector<Point> > gold;
+    vector<vector<Point> > stone;
+    vector<vector<Point> > obstacles;
+
+    for (int i = 0; i < yellow_contours_poly.size(); i++) {
+        if (yellow_contours_poly[i].size() == 3)
+            stone.push_back(yellow_contours_poly[i]);
+        if (yellow_contours_poly[i].size() == 4)
+            gold.push_back(yellow_contours_poly[i]);
+    }
+    for (int i = 0; i < green_contours_poly.size(); i++) {
+        if (green_contours_poly[i].size() == 3)
+            stone.push_back(green_contours_poly[i]);
+        if (green_contours_poly[i].size() == 4)
+            wood.push_back(green_contours_poly[i]);
+    }
+    for (int i = 0; i < blue_contours_poly.size(); i++) {
+        obstacles.push_back(blue_contours_poly[i]);
+    }
+    for (int i = 0; i < brown_contours_poly.size(); i++) {
+        obstacles.push_back(brown_contours_poly[i]);
+    }
+    */
 }
