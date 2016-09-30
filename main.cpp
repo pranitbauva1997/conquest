@@ -18,6 +18,36 @@ Mat yellow_drawing, green_drawing, blue_drawing, brown_drawing, red_drawing, hea
 int binary_thresh = 100;
 
 /* Path planning variables */
+enum start_point {
+    TOWN_CENTRE = 1,
+    RESOURCE
+};
+
+enum status {
+    START_POINT = 1,
+    IN_BETWEEN_PATH,
+    END_POINT,
+    BLINK_LED
+};
+
+struct Node {
+    vector<Node *> children;
+    Node *parent;
+    Point position;
+};
+
+Node start_node;
+Node end_node;
+
+Node* nodes[5000];
+int totnodes = 0;
+int reached = 0;
+int step_size = 20;
+int iter = 0;
+
+vector<Point> target_resources;
+Point town_centre, end_target;
+Point bot_position, current_target, start_point;
 
 RNG rng(12345);
 
@@ -167,12 +197,256 @@ int main(int argc, const char **argv) {
         imshow("Brown", brown_img);
         imshow("Red", red_img);
 
+        threshold_color_images();
+
         // createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
         // thresh_callback(0, 0);
+        merge_obstacle_image();
+
+        /* Compute Path and move bot's ass */
+        if (status == IN_BETWEEN_PATH) {
+            continue_moving();
+        } else if (status == START_POINT) {
+            get_path_to_start_point();
+            status == IN_BETWEEN_PATH;
+        } else if (status == RESOURCE) {
+            get_path_to_end_point();
+            status = IN_BETWEEN_PATH;
+        }
+
+        check_status();
         waitKey(70);
     }
 
     return 0;
+}
+
+void init() {
+    start_node.position.x = town_centre.x;
+    start_node.position.y = town_centre.y;
+    nodes[totnodes++] = &start_node;
+    end_node.position.x = end_target.x;
+    end_node.position.y = end_target.y;
+    srand(time(NULL));
+}
+
+int near_node(Node rnode) {
+    float min_dist = 999.0;
+    int dis = distance(start_node.position, rnode.position);
+    int lnode = 0;
+    for (int i = 0; i < totnodes; i++) {
+        dist = distance(nodes[i]->position, rnode.position);
+        if (dist < min_dist) {
+            min_dist = dist;
+            lnode = i;
+        }
+    }
+
+    return lnode;
+}
+
+Point stepping(Point nnode, Point rnode) {
+    Point interm, step;
+    float magn = 0.0, x = 0.0, y = 0.0;
+    interm.x = rnode.x - nnode.x;
+    interm.y = rnode.y - nnode.y;
+    magn = sqrt(pow(interm.x, 2) + pow(interm.y, 2));
+    x = interm.x / magn;
+    y = interm.y / magn;
+    step.x = (int) (nnode.x + step_size * x);
+    step.y = (int) (nnode.y + step_size * y);
+    return step;
+}
+
+check_validity_1(Point p, Point q) {
+    Point large, small;
+    int i = 0, j1 = 0, j2 = 0;
+    double slope;
+    if (q.x < p.x) {
+        small  = q;
+        large = p;
+    } else {
+        small = p;
+        large = q;
+    }
+    if (large.x = small.x)
+        return 0;
+
+    slope = ((double) large.y - small.y) / ((double) large.x - small.x);
+    for (i = small.x + 1; i < large.x; i++) {
+        j1 = (int) ((i * slope) - (small.x) * (slope) + small.y);
+        j2 = j1 + 1;
+        if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
+            continue;
+        if (blue_img_gray.at<uchar>(i, j1) == 255)
+            return 0;
+        if (blue_img_gray.at<uchar>(i, j2) == 255)
+            return 0;
+    }
+
+    return 1;
+}
+
+int check_validity_2(Point p, Point q) {
+    Point large, small;
+    int i = 0, j1 = 0, j2 = 0;
+    double slope;
+    if (q.y < p.y) {
+        small = q;
+        large = p;
+    } else {
+        small = p;
+        large = q;
+    }
+    if (large.x = small.x)
+        return 0;
+    slope = ((double) large.y - small.y) / ((double) large.x - small.x);
+    for (i = small.y + i; i < large.y; i++) {
+        j1 = (int) (((i - small.y) / slope) + small.x);
+        j2 = j1 + 1;
+        if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
+            continue;
+        if (blue_img_gray.at<uchar>(i, j1) == 255)
+            return 0;
+        if (blue_img_gray.at<uchar>(i, j2) == 255)
+            return 0;
+    }
+
+    return 1;
+}
+
+void draw_path() {
+    Node up, down;
+    int breaking = 0;
+    down = end_node;
+    up = *(end_node.parent);
+    while (1) {
+        line(path_img, Point(up.position.y, up.position.x), Point(down.position.y, down.position.x), Scalar(0, 255, 0), 2, 8);
+        if (up.parent == NULL)
+            break;
+        up = *(up.parent);
+        down = *(down.parent);
+    }
+}
+
+void rrt() {
+    int flag1 = 0, index = 0, flag2 = 0;
+    Node *rnode = new Node;
+    Node *stepnode = new Node;
+    (rnode->position).x = rand() % 400 + 1;
+    (rnode->position).y = rand() % 400 + 1;
+    index = near_node(*rnode);
+    if ((distance(rnode->position, nodes[index]->position)) < step_size)
+        return;
+    else
+        stepnode->position = stepping(nodes[index]->position, rnode->position);
+    flag1 = check_validity_1(nodes[index]->position, stepnode->position);
+    if ((flag == 1) && (flag2 == 1)) {
+        nodes[totnodes++] = stepnode;
+        stepnode->parent = nodes[index];
+        (nodes[index]->children).push_back(stepnode);
+        line(path_img, Point((stepnode->position).y, (stepnode->position).x), Point(nodes[index]->position.y, nodes[index]-position.x), Scalar(0, 255, 255), 2, 8);
+        for (int i = stepnode->position.x - 2; i < stepnode->position.x + 2; i++) {
+            for (int j = stepnode->position.y - 2; j < stepnode->position.y + 2; j++) {
+                if ((i < 0 || j < 0 || i > src.rows || j > src.cols))
+                    continue;
+
+                path_img.at<Vec3b>(i, j)[0] = 0;
+                path_img.at<Vec3b>(i, j)[1] = 255;
+                path_img.at<Vec3b>(i, j)[2] = 0;
+            }
+        }
+        if ((check_validity_1(stepnode->position, end_node.position)) && (check_validity_2(stepnode->position, end_node.position)) && (distance(stepnode->position, end_node.position) < step_size)) {
+            reached = 1;
+            nodes[totnodes++] = &end_node;
+            end_node.parent = stepnode;
+            (nodes[totnodes - 1]->children).push_back(&end_node);
+            draw_path();
+        }
+    }
+    iter++;
+}
+
+void check_status() {
+    if (distance(&bot_position, &current_target) < 20) {
+        status = BLINK_LED;
+        blink_led();
+    }
+}
+
+int distance distance(Point a, Point b) {
+    Point temp;
+    temp.x = a.x - b.x;
+    temp.y = a.y - b.y;
+    return (int) sqrt(pow(temp.x, 2) + pow(temp.y, 2));
+}
+
+void continue_moving() {
+    int x = current_target.x - bot_position.x;
+    int y = current_target.y - bot_position.y;
+    if (x > 0 && y > 0)
+        go_left();
+    if (x > 0 && y < 0)
+        go_right();
+}
+
+void threshold_color_images() {
+    threshold_yellow_image();
+    threshold_green_image();
+    threshold_blue_image();
+    threshold_red_image();
+    threshold_brown_image();
+}
+
+void threshold_blue_image() {
+    for (int i = 0; i < blue_img.rows; i++) {
+        if (int j = 0; j < blue_img.cols; j++) {
+            if (blue_img.at<Vec3b>(i, j)[2] > 100)
+                blue_img_gray.at<uchar> = 255;
+            else
+                blue_image_gray.at<uchar> = 0;
+        }
+    }
+}
+
+void threshold_green_image() {
+    for (int i = 0; i < green_img.rows; i++) {
+        for (int j = 0; j < green_img.cols; j++) {
+            if (green_img.at<Vec3b>(i, j)[2] > 100)
+                green_img_gray.at<uchar> = 255;
+            else
+                green_img_gray.at<uchar> = 0;
+        }
+    }
+}
+
+void threshold_brown_image() {
+    for (int i = 0; i < brown_image.rows; i++) {
+        for (int j = 0; j < brown_image.cols; j++) {
+            if (brown_image.at<Vec3b>(i, j)[2] > 100)
+                brown_image_gray.at<uchar> = 255;
+            else
+                brown_image_gray.at<uchar> = 0;
+        }
+    }
+}
+
+void threshold_red_image() {
+    for (int i = 0; i < red_image.rows; i++) {
+        for (int j = 0; j < red_image.cols; j++) {
+            if (red_image.at<Vec3b>(i, j)[2] > 100)
+                red_image_gray.at<uchar> = 255;
+            else
+                red_image_gray.at<uchar> = 0;
+        }
+    }
+}
+
+void merge_obstacle_image() {
+    for (int i = 0; i < blue_img.rows; i++)
+        for (int j = 0; j < blue_img.cols; j++)
+            if (blue_img_gray.at<uchar>(i, j) == 255)
+                brown_img.at<Vec3b>(i, j) = 255;
 }
 
 void thresh_callback(int, void *) {
