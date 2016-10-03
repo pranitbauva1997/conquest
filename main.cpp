@@ -15,7 +15,7 @@ Mat yellow_img_poly, green_img_poly, blue_img_poly, brown_img_poly, red_img_poly
 Mat yellow_drawing, green_drawing, blue_drawing, brown_drawing, red_drawing, head_drawing, tail_drawing;
 
 int binary_thresh = 100;
-int init = 0;
+int initial = 0;
 
 /* Path planning variables */
 enum start_point {
@@ -30,24 +30,32 @@ enum status {
     BLINK_LED
 };
 
+typedef struct {
+    int x;
+    int y;
+} coordi;
+
 struct Node {
     vector<Node *> children;
     Node *parent;
-    Point position;
+    coordi position;
 };
 
 Node start_node;
 Node end_node;
 
-Node* nodes[5000];
+Node *nodes[5000];
 int totnodes = 0;
 int reached = 0;
 int step_size = 20;
 int iter = 0;
+int path = 0;
 
 vector<Point> target_resources;
 Point town_centre, end_target;
 Point bot_position, current_target, start_point;
+
+Mat path_img;
 
 RNG rng(12345);
 
@@ -62,6 +70,16 @@ struct hsv_trackbar {
 
 /* @function thresh_callback */
 void thresh_callback(int, void *);
+void rrt();
+void draw_path();
+int check_validity_2(coordi a, coordi b);
+int check_validity_1(coordi a, coordi b);
+coordi stepping(coordi nnode, coordi rnode);
+int near_node(Node rnode);
+float node_dist(coordi a, coordi b);
+void init();
+int dist(coordi a, coordi b);
+
 
 void init_trackbars() {
     namedWindow("Bot Trackbars", 1);
@@ -158,6 +176,8 @@ int main(int argc, const char **argv) {
 
     while(1) {
         cap >> src;
+        if (!path)
+            path_img = Mat::zeros(src.size(), CV_8UC3);
         cvtColor(src, imgHSV, CV_BGR2HSV);
         inRange(imgHSV, Scalar(yellow.h_low, yellow.s_low, yellow.v_low),
                 Scalar(yellow.h_high, yellow.s_high, yellow.v_high), yellow_img);
@@ -196,12 +216,18 @@ int main(int argc, const char **argv) {
 
         createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
         thresh_callback(0, 0);
+        if (!path) {
+            init();
+            rrt();
+            path++;
+        }
+        imshow("RRT Path", path_img);
         waitKey(70);
     }
 
     return 0;
 }
-/*
+
 void init() {
     start_node.position.x = town_centre.x;
     start_node.position.y = town_centre.y;
@@ -213,12 +239,12 @@ void init() {
 
 int near_node(Node rnode) {
     float min_dist = 999.0;
-    int dis = distance(start_node.position, rnode.position);
+    int dis = dist(start_node.position, rnode.position);
     int lnode = 0;
     for (int i = 0; i < totnodes; i++) {
-        dist = distance(nodes[i]->position, rnode.position);
-        if (dist < min_dist) {
-            min_dist = dist;
+        dis = dist(nodes[i]->position, rnode.position);
+        if (dis < min_dist) {
+            min_dist = dis;
             lnode = i;
         }
     }
@@ -226,8 +252,8 @@ int near_node(Node rnode) {
     return lnode;
 }
 
-Point stepping(Point nnode, Point rnode) {
-    Point interm, step;
+coordi stepping(coordi nnode, coordi rnode) {
+    coordi interm, step;
     float magn = 0.0, x = 0.0, y = 0.0;
     interm.x = rnode.x - nnode.x;
     interm.y = rnode.y - nnode.y;
@@ -239,8 +265,8 @@ Point stepping(Point nnode, Point rnode) {
     return step;
 }
 
-check_validity_1(Point p, Point q) {
-    Point large, small;
+int check_validity_1(coordi p, coordi q) {
+    coordi large, small;
     int i = 0, j1 = 0, j2 = 0;
     double slope;
     if (q.x < p.x) {
@@ -250,7 +276,7 @@ check_validity_1(Point p, Point q) {
         small = p;
         large = q;
     }
-    if (large.x = small.x)
+    if (large.x == small.x)
         return 0;
 
     slope = ((double) large.y - small.y) / ((double) large.x - small.x);
@@ -259,17 +285,17 @@ check_validity_1(Point p, Point q) {
         j2 = j1 + 1;
         if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
             continue;
-        if (blue_img_gray.at<uchar>(i, j1) == 255)
+        if (blue_img.at<uchar>(i, j1) == 255)
             return 0;
-        if (blue_img_gray.at<uchar>(i, j2) == 255)
+        if (blue_img.at<uchar>(i, j2) == 255)
             return 0;
     }
 
     return 1;
 }
 
-int check_validity_2(Point p, Point q) {
-    Point large, small;
+int check_validity_2(coordi p, coordi q) {
+    coordi large, small;
     int i = 0, j1 = 0, j2 = 0;
     double slope;
     if (q.y < p.y) {
@@ -279,7 +305,7 @@ int check_validity_2(Point p, Point q) {
         small = p;
         large = q;
     }
-    if (large.x = small.x)
+    if (large.x == small.x)
         return 0;
     slope = ((double) large.y - small.y) / ((double) large.x - small.x);
     for (i = small.y + i; i < large.y; i++) {
@@ -287,9 +313,9 @@ int check_validity_2(Point p, Point q) {
         j2 = j1 + 1;
         if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
             continue;
-        if (blue_img_gray.at<uchar>(i, j1) == 255)
+        if (blue_img.at<uchar>(i, j1) == 255)
             return 0;
-        if (blue_img_gray.at<uchar>(i, j2) == 255)
+        if (blue_img.at<uchar>(i, j2) == 255)
             return 0;
     }
 
@@ -317,16 +343,17 @@ void rrt() {
     (rnode->position).x = rand() % 400 + 1;
     (rnode->position).y = rand() % 400 + 1;
     index = near_node(*rnode);
-    if ((distance(rnode->position, nodes[index]->position)) < step_size)
+    if ((dist(rnode->position, nodes[index]->position)) < step_size)
         return;
     else
         stepnode->position = stepping(nodes[index]->position, rnode->position);
     flag1 = check_validity_1(nodes[index]->position, stepnode->position);
-    if ((flag == 1) && (flag2 == 1)) {
+    flag2 = check_validity_2(nodes[index]->position, stepnode->position);
+    if ((flag1 == 1) && (flag2 == 1)) {
         nodes[totnodes++] = stepnode;
         stepnode->parent = nodes[index];
         (nodes[index]->children).push_back(stepnode);
-        line(path_img, Point((stepnode->position).y, (stepnode->position).x), Point(nodes[index]->position.y, nodes[index]-position.x), Scalar(0, 255, 255), 2, 8);
+        line(path_img, Point((stepnode->position).y, (stepnode->position).x), Point(nodes[index]->position.y, nodes[index]->position.x), Scalar(0, 255, 255), 2, 8);
         for (int i = stepnode->position.x - 2; i < stepnode->position.x + 2; i++) {
             for (int j = stepnode->position.y - 2; j < stepnode->position.y + 2; j++) {
                 if ((i < 0 || j < 0 || i > src.rows || j > src.cols))
@@ -337,7 +364,7 @@ void rrt() {
                 path_img.at<Vec3b>(i, j)[2] = 0;
             }
         }
-        if ((check_validity_1(stepnode->position, end_node.position)) && (check_validity_2(stepnode->position, end_node.position)) && (distance(stepnode->position, end_node.position) < step_size)) {
+        if ((check_validity_1(stepnode->position, end_node.position)) && (check_validity_2(stepnode->position, end_node.position)) && (dist(stepnode->position, end_node.position) < step_size)) {
             reached = 1;
             nodes[totnodes++] = &end_node;
             end_node.parent = stepnode;
@@ -346,22 +373,25 @@ void rrt() {
         }
     }
     iter++;
+    if (reached == 0)
+        rrt();
 }
 
+/*
 void check_status() {
-    if (distance(&bot_position, &current_target) < 20) {
+    if (distance_(&bot_position, &current_target) < 20) {
         status = BLINK_LED;
         blink_led();
     }
-}
+}*/
 
-int distance(Point a, Point b) {
-    Point temp;
+int dist(coordi a, coordi b) {
+    coordi temp;
     temp.x = a.x - b.x;
     temp.y = a.y - b.y;
     return (int) sqrt(pow(temp.x, 2) + pow(temp.y, 2));
 }
-
+/*
 void continue_moving() {
     int x = current_target.x - bot_position.x;
     int y = current_target.y - bot_position.y;
@@ -369,8 +399,7 @@ void continue_moving() {
         go_left();
     if (x > 0 && y < 0)
         go_right();
-}
-*/
+}*/
 
 void thresh_callback(int, void *) {
     Mat yellow_output, blue_output, head_output, tail_output, brown_output;
@@ -437,13 +466,13 @@ void thresh_callback(int, void *) {
 
     for (int i = 0; i < blue_contours.size(); i++) {
         approxPolyDP(Mat(blue_contours[i]), blue_contours_poly[i], 3, true);
-        if (contourArea(blue_contours[i]))
+        if (contourArea(blue_contours[i]) > 100)
             blueBoundRect[i] = boundingRect(Mat(blue_contours_poly[i]));
     }
 
     for (int i = 0; i < brown_contours.size(); i++) {
         approxPolyDP(Mat(brown_contours[i]), brown_contours_poly[i], 3, true);
-        if (contourArea(brown_contours[i]) > 100)
+        if (contourArea(brown_contours[i]) > 500)
             brownBoundRect[i] = boundingRect(Mat(brown_contours_poly[i]));
     }
 
@@ -468,7 +497,7 @@ void thresh_callback(int, void *) {
         Point centre_rect = (yellowBoundRect[i].tl() + yellowBoundRect[i].br());
         centre_rect.x /= 2;
         centre_rect.y /= 2;
-        if (!init)
+        if (!initial)
             target_resources.push_back(centre_rect);
     }
     for (int i = 0; i < green_contours.size(); i++) {
@@ -477,7 +506,7 @@ void thresh_callback(int, void *) {
         Point centre_rect = (greenBoundRect[i].tl() + greenBoundRect[i].br());
         centre_rect.x /= 2;
         centre_rect.y /= 2;
-        if (!init)
+        if (!initial)
             target_resources.push_back(centre_rect);
     }
     for (int i = 0; i < blue_contours.size(); i++) {
@@ -486,7 +515,7 @@ void thresh_callback(int, void *) {
         Point centre_rect = (blueBoundRect[i].tl() + blueBoundRect[i].br());
         centre_rect.x /= 2;
         centre_rect.y /= 2;
-        if (!init)
+        if (!initial)
             target_resources.push_back(centre_rect);
     }
     for (int i = 0; i < red_contours.size(); i++) {
@@ -495,7 +524,7 @@ void thresh_callback(int, void *) {
         Point centre_rect = (redBoundRect[i].tl() + redBoundRect[i].br());
         centre_rect.x /= 2;
         centre_rect.y /= 2;
-        if (!init)
+        if (!initial)
             target_resources.push_back(centre_rect);
     }
     for (int i = 0; i < brown_contours.size(); i++) {
@@ -504,10 +533,11 @@ void thresh_callback(int, void *) {
         Point centre_rect = (brownBoundRect[i].tl() + brownBoundRect[i].br());
         centre_rect.x /= 2;
         centre_rect.y /= 2;
-        if (!init)
-            target_resources.push_back(centre_rect);
+        if (centre_rect.x != 0 && centre_rect.y != 0)
+            town_centre = centre_rect;
     }
-    init++;
+    initial++;
+    end_target = target_resources[0];
 
     imshow("Head Contours", head_drawing);
     imshow("Tail Contours", tail_drawing);
