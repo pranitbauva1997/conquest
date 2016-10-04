@@ -47,7 +47,7 @@ Node end_node;
 Node *nodes[5000];
 int totnodes = 0;
 int reached = 0;
-int step_size = 20;
+int step_size = 10;
 int iter = 0;
 int path = 0;
 
@@ -218,11 +218,12 @@ int main(int argc, const char **argv) {
         thresh_callback(0, 0);
         if (!path) {
             init();
-            rrt();
+            while ((reached == 0))
+                rrt();
             path++;
         }
         imshow("RRT Path", path_img);
-        waitKey(70);
+        waitKey(5);
     }
 
     return 0;
@@ -285,9 +286,9 @@ int check_validity_1(coordi p, coordi q) {
         j2 = j1 + 1;
         if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
             continue;
-        if (blue_img.at<uchar>(i, j1) == 255)
+        if (((int)blue_img.at<Vec3b>(i, j1)[0] > 50) || ((int)blue_img.at<Vec3b>(i, j1)[1] > 50) || ((int)blue_img.at<Vec3b>(i, j1)[2] > 50))
             return 0;
-        if (blue_img.at<uchar>(i, j2) == 255)
+        if (((int)blue_img.at<Vec3b>(i, j2)[0] > 50) || ((int)blue_img.at<Vec3b>(i, j2)[1] > 50) || ((int)blue_img.at<Vec3b>(i, j2)[2] > 50))
             return 0;
     }
 
@@ -313,9 +314,9 @@ int check_validity_2(coordi p, coordi q) {
         j2 = j1 + 1;
         if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
             continue;
-        if (blue_img.at<uchar>(i, j1) == 255)
+        if (((int)blue_img.at<Vec3b>(i, j1)[0] > 50) || ((int)blue_img.at<Vec3b>(i, j1)[1] > 50) || ((int)blue_img.at<Vec3b>(i, j1)[2] > 50))
             return 0;
-        if (blue_img.at<uchar>(i, j2) == 255)
+        if (((int)blue_img.at<Vec3b>(i, j2)[0] > 50) || ((int)blue_img.at<Vec3b>(i, j2)[1] > 50) || ((int)blue_img.at<Vec3b>(i, j2)[2] > 50))
             return 0;
     }
 
@@ -340,8 +341,8 @@ void rrt() {
     int flag1 = 0, index = 0, flag2 = 0;
     Node *rnode = new Node;
     Node *stepnode = new Node;
-    (rnode->position).x = rand() % 400 + 1;
-    (rnode->position).y = rand() % 400 + 1;
+    (rnode->position).x = rand() % src.rows + 1;
+    (rnode->position).y = rand() % src.cols + 1;
     index = near_node(*rnode);
     if ((dist(rnode->position, nodes[index]->position)) < step_size)
         return;
@@ -373,8 +374,6 @@ void rrt() {
         }
     }
     iter++;
-    if (reached == 0)
-        rrt();
 }
 
 /*
@@ -483,15 +482,15 @@ void thresh_callback(int, void *) {
     brown_drawing = Mat::zeros(src.size(), CV_8UC3);
     yellow_drawing = Mat::zeros(src.size(), CV_8UC3);
 
-    for (int i = 0; i < head_contours.size(); i++) {
+    for (int i = 0; i < headBoundRect.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(head_drawing, headBoundRect[i].tl(), headBoundRect[i].br(), color, 2, 8, 0);
     }
-    for (int i = 0; i < tail_contours.size(); i++) {
+    for (int i = 0; i < tailBoundRect.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(tail_drawing, tailBoundRect[i].tl(), tailBoundRect[i].br(), color, 2, 8, 0);
     }
-    for (int i = 0; i < yellow_contours.size(); i++) {
+    for (int i = 0; i < yellowBoundRect.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(yellow_drawing, yellowBoundRect[i].tl(), yellowBoundRect[i].br(), color, 2, 8, 0);
         Point centre_rect = (yellowBoundRect[i].tl() + yellowBoundRect[i].br());
@@ -500,16 +499,7 @@ void thresh_callback(int, void *) {
         if (!initial)
             target_resources.push_back(centre_rect);
     }
-    for (int i = 0; i < green_contours.size(); i++) {
-        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-        rectangle(green_drawing, greenBoundRect[i].tl(), greenBoundRect[i].br(), color, 2, 8, 0);
-        Point centre_rect = (greenBoundRect[i].tl() + greenBoundRect[i].br());
-        centre_rect.x /= 2;
-        centre_rect.y /= 2;
-        if (!initial)
-            target_resources.push_back(centre_rect);
-    }
-    for (int i = 0; i < blue_contours.size(); i++) {
+    for (int i = 0; i < blueBoundRect.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(blue_drawing, blueBoundRect[i].tl(), blueBoundRect[i].br(), color, 2, 8, 0);
         Point centre_rect = (blueBoundRect[i].tl() + blueBoundRect[i].br());
@@ -518,16 +508,7 @@ void thresh_callback(int, void *) {
         if (!initial)
             target_resources.push_back(centre_rect);
     }
-    for (int i = 0; i < red_contours.size(); i++) {
-        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-        rectangle(red_drawing, redBoundRect[i].tl(), redBoundRect[i].br(), color, 2, 8, 0);
-        Point centre_rect = (redBoundRect[i].tl() + redBoundRect[i].br());
-        centre_rect.x /= 2;
-        centre_rect.y /= 2;
-        if (!initial)
-            target_resources.push_back(centre_rect);
-    }
-    for (int i = 0; i < brown_contours.size(); i++) {
+    for (int i = 0; i < brownBoundRect.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(brown_drawing, brownBoundRect[i].tl(), brownBoundRect[i].br(), color, 2, 8, 0);
         Point centre_rect = (brownBoundRect[i].tl() + brownBoundRect[i].br());
