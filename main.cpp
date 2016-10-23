@@ -372,6 +372,12 @@ void thresh_callback(int, void *) {
         }
     }
 
+    for (int i = -5; i < 5; i++) {
+        for (int j = -5; j < 5; j++) {
+            path_img.at<Vec3b>(i + end_point.x, j + end_point.y) = {255, 255, 255};
+        }
+    }
+
     imshow("Head Contours", head_drawing);
     imshow("Tail Contours", tail_drawing);
     imshow("Yellow Contours", yellow_drawing);
