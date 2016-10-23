@@ -35,23 +35,20 @@ int binary_thresh = 100;
 int initial = 0;
 
 /* Path planning variables */
-enum start_point {
-    TOWN_CENTRE = 1,
-    RESOURCE
-};
 
-enum status {
+enum state {
     START_POINT = 1,
     IN_BETWEEN_PATH,
     END_POINT,
     BLINK_LED
 };
 
-int path = 0;
-
 vector<Point> target_resources;
 Point town_centre, bot_position;
 Point start_point, end_point, current_point;
+
+void get_path();
+void move_bot();
 
 Mat path_img;
 
@@ -68,7 +65,6 @@ struct hsv_trackbar {
 
 /* @function thresh_callback */
 void thresh_callback(int, void *);
-
 
 void init_trackbars() {
     namedWindow("Bot Trackbars", 1);
@@ -163,9 +159,11 @@ int main(int argc, const char **argv) {
     init_hsvcolor();
     //init_trackbars();
 
+    state status = START_POINT;
+
     while(1) {
         cap >> src;
-        if (!path)
+        if (status == START_POINT)
             path_img = Mat::zeros(src.size(), CV_8UC3);
         cvtColor(src, imgHSV, CV_BGR2HSV);
         inRange(imgHSV, Scalar(yellow.h_low, yellow.s_low, yellow.v_low),
@@ -205,14 +203,23 @@ int main(int argc, const char **argv) {
 
         createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
         thresh_callback(0, 0);
-        if (!path) {
-            path++;
+        if (status == START_POINT) {
+            get_path();
+            move_bot();
         }
         imshow("RRT Path", path_img);
-        waitKey(5);
+        waitKey(30);
     }
 
     return 0;
+}
+
+void get_path() {
+
+}
+
+void move_bot() {
+
 }
 
 /*
@@ -337,7 +344,7 @@ void thresh_callback(int, void *) {
         }
     }
     initial++;
-    end_target = target_resources[0];
+    end_point = target_resources[0];
     for (int i = -5; i < 5; i++) {
         for (int j = -5; j < 5; j++) {
             path_img.at<Vec3b>(i + town_centre.x, j + town_centre.y) = {255, 255, 255};
