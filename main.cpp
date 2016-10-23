@@ -47,30 +47,11 @@ enum status {
     BLINK_LED
 };
 
-typedef struct {
-    int x;
-    int y;
-} coordi;
-
-struct Node {
-    vector<Node *> children;
-    Node *parent;
-    coordi position;
-};
-
-Node start_node;
-Node end_node;
-
-Node *nodes[5000];
-int totnodes = 0;
-int reached = 0;
-int step_size = 20;
-int iter = 0;
 int path = 0;
 
 vector<Point> target_resources;
-Point town_centre, end_target;
-Point bot_position, current_target, start_point;
+Point town_centre, bot_position;
+Point start_point, end_point, current_point;
 
 Mat path_img;
 
@@ -87,15 +68,6 @@ struct hsv_trackbar {
 
 /* @function thresh_callback */
 void thresh_callback(int, void *);
-void rrt();
-void draw_path();
-int check_validity_2(coordi a, coordi b);
-int check_validity_1(coordi a, coordi b);
-coordi stepping(coordi nnode, coordi rnode);
-int near_node(Node rnode);
-float node_dist(coordi a, coordi b);
-void init();
-int dist(coordi a, coordi b);
 
 
 void init_trackbars() {
@@ -234,9 +206,6 @@ int main(int argc, const char **argv) {
         createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
         thresh_callback(0, 0);
         if (!path) {
-            init();
-            while ((reached == 0))
-                rrt();
             path++;
         }
         imshow("RRT Path", path_img);
@@ -244,160 +213,6 @@ int main(int argc, const char **argv) {
     }
 
     return 0;
-}
-
-void init() {
-    start_node.position.x = town_centre.x;
-    start_node.position.y = town_centre.y;
-    nodes[totnodes++] = &start_node;
-    end_node.position.x = end_target.x;
-    end_node.position.y = end_target.y;
-    srand(time(NULL));
-}
-
-int near_node(Node rnode) {
-    float min_dist = 999.0;
-    int dis = dist(start_node.position, rnode.position);
-    int lnode = 0;
-    for (int i = 0; i < totnodes; i++) {
-        dis = dist(nodes[i]->position, rnode.position);
-        if (dis < min_dist) {
-            min_dist = dis;
-            lnode = i;
-        }
-    }
-
-    return lnode;
-}
-
-coordi stepping(coordi nnode, coordi rnode) {
-    coordi interm, step;
-    float magn = 0.0, x = 0.0, y = 0.0;
-    interm.x = rnode.x - nnode.x;
-    interm.y = rnode.y - nnode.y;
-    magn = sqrt(pow(interm.x, 2) + pow(interm.y, 2));
-    x = interm.x / magn;
-    y = interm.y / magn;
-    step.x = (int) (nnode.x + step_size * x);
-    step.y = (int) (nnode.y + step_size * y);
-    return step;
-}
-
-int pointInsideRect(Point a, Point c1, Point c2) {
-    if (a.x < (c1.x + c2.x)/2 && a.y < (c1.y + c2.y)/2)
-        return 1;
-
-    return 0;
-}
-
-int check_validity_1(coordi p, coordi q) {
-    coordi large, small;
-    int i = 0, j1 = 0, j2 = 0;
-    double slope;
-    if (q.x < p.x) {
-        small  = q;
-        large = p;
-    } else {
-        small = p;
-        large = q;
-    }
-    if (large.x == small.x)
-        return 0;
-
-    slope = ((double) large.y - small.y) / ((double) large.x - small.x);
-    for (i = small.x + 1; i < large.x; i++) {
-        j1 = (int) ((i * slope) - (small.x) * (slope) + small.y);
-        j2 = j1 + 1;
-        if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
-            continue;
-        if (pointInsideRect(Point(i, j1), brownBoundRect[0].tl(), brownBoundRect[0].br()))
-            return 0;
-        if (pointInsideRect(Point(i, j2), brownBoundRect[0].tl(), brownBoundRect[0].br()))
-            return 0;
-    }
-
-    return 1;
-}
-
-int check_validity_2(coordi p, coordi q) {
-    coordi large, small;
-    int i = 0, j1 = 0, j2 = 0;
-    double slope;
-    if (q.y < p.y) {
-        small = q;
-        large = p;
-    } else {
-        small = p;
-        large = q;
-    }
-    if (large.x == small.x)
-        return 0;
-    slope = ((double) large.y - small.y) / ((double) large.x - small.x);
-    for (i = small.y + i; i < large.y; i++) {
-        j1 = (int) (((i - small.y) / slope) + small.x);
-        j2 = j1 + 1;
-        if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
-            continue;
-        if (pointInsideRect(Point(i, j1), brownBoundRect[0].tl(), brownBoundRect[0].br()))
-            return 0;
-        if (pointInsideRect(Point(i, j2), brownBoundRect[0].tl(), brownBoundRect[0].br()))
-            return 0;
-    }
-
-    return 1;
-}
-
-void draw_path() {
-    Node up, down;
-    int breaking = 0;
-    down = end_node;
-    up = *(end_node.parent);
-    while (1) {
-        line(path_img, Point(up.position.y, up.position.x), Point(down.position.y, down.position.x), Scalar(0, 255, 0), 2, 8);
-        if (up.parent == NULL)
-            break;
-        up = *(up.parent);
-        down = *(down.parent);
-    }
-}
-
-void rrt() {
-    int flag1 = 0, index = 0, flag2 = 0;
-    Node *rnode = new Node;
-    Node *stepnode = new Node;
-    (rnode->position).x = rand() % src.rows + 1;
-    (rnode->position).y = rand() % src.cols + 1;
-    index = near_node(*rnode);
-    if ((dist(rnode->position, nodes[index]->position)) < step_size)
-        return;
-    else
-        stepnode->position = stepping(nodes[index]->position, rnode->position);
-    flag1 = check_validity_1(nodes[index]->position, stepnode->position);
-    flag2 = check_validity_2(nodes[index]->position, stepnode->position);
-    if ((flag1 == 1) && (flag2 == 1)) {
-        nodes[totnodes++] = stepnode;
-        stepnode->parent = nodes[index];
-        (nodes[index]->children).push_back(stepnode);
-        line(path_img, Point((stepnode->position).y, (stepnode->position).x), Point(nodes[index]->position.y, nodes[index]->position.x), Scalar(0, 255, 255), 2, 8);
-        for (int i = stepnode->position.x - 2; i < stepnode->position.x + 2; i++) {
-            for (int j = stepnode->position.y - 2; j < stepnode->position.y + 2; j++) {
-                if ((i < 0 || j < 0 || i > src.rows || j > src.cols))
-                    continue;
-
-                path_img.at<Vec3b>(i, j)[0] = 0;
-                path_img.at<Vec3b>(i, j)[1] = 255;
-                path_img.at<Vec3b>(i, j)[2] = 0;
-            }
-        }
-        if ((check_validity_1(stepnode->position, end_node.position)) && (check_validity_2(stepnode->position, end_node.position)) && (dist(stepnode->position, end_node.position) < step_size)) {
-            reached = 1;
-            nodes[totnodes++] = &end_node;
-            end_node.parent = stepnode;
-            (nodes[totnodes - 1]->children).push_back(&end_node);
-            draw_path();
-        }
-    }
-    iter++;
 }
 
 /*
@@ -408,12 +223,6 @@ void check_status() {
     }
 }*/
 
-int dist(coordi a, coordi b) {
-    coordi temp;
-    temp.x = a.x - b.x;
-    temp.y = a.y - b.y;
-    return (int) sqrt(pow(temp.x, 2) + pow(temp.y, 2));
-}
 /*
 void continue_moving() {
     int x = current_target.x - bot_position.x;
