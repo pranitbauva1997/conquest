@@ -13,6 +13,23 @@ using namespace std;
 Mat src, src_gray, imgHSV, yellow_img, green_img, blue_img, brown_img, red_img, head_img, tail_img;
 Mat yellow_img_poly, green_img_poly, blue_img_poly, brown_img_poly, red_img_poly, head_img_poly, tail_img_poly;
 Mat yellow_drawing, green_drawing, blue_drawing, brown_drawing, red_drawing, head_drawing, tail_drawing;
+Mat yellow_output, blue_output, head_output, tail_output, brown_output;
+vector<vector<Point> > head_contours, tail_contours, yellow_contours, green_contours, blue_contours, brown_contours, red_contours;
+vector<Vec4i> head_hierarchy, tail_hierarchy, yellow_hierarchy, green_hierarchy, blue_hierarchy, brown_hierarchy, red_hierarchy;
+vector<vector<Point> > head_contours_poly;
+vector<vector<Point> > tail_contours_poly;
+vector<vector<Point> > yellow_contours_poly;
+vector<vector<Point> > green_contours_poly;
+vector<vector<Point> > blue_contours_poly;
+vector<vector<Point> > brown_contours_poly;
+vector<vector<Point> > red_contours_poly;
+vector<Rect> headBoundRect;
+vector<Rect> tailBoundRect;
+vector<Rect> yellowBoundRect;
+vector<Rect> greenBoundRect;
+vector<Rect> blueBoundRect;
+vector<Rect> brownBoundRect;
+vector<Rect> redBoundRect;
 
 int binary_thresh = 100;
 int initial = 0;
@@ -47,7 +64,7 @@ Node end_node;
 Node *nodes[5000];
 int totnodes = 0;
 int reached = 0;
-int step_size = 10;
+int step_size = 20;
 int iter = 0;
 int path = 0;
 
@@ -266,6 +283,13 @@ coordi stepping(coordi nnode, coordi rnode) {
     return step;
 }
 
+int pointInsideRect(Point a, Point c1, Point c2) {
+    if (a.x < (c1.x + c2.x)/2 && a.y < (c1.y + c2.y)/2)
+        return 1;
+
+    return 0;
+}
+
 int check_validity_1(coordi p, coordi q) {
     coordi large, small;
     int i = 0, j1 = 0, j2 = 0;
@@ -286,9 +310,9 @@ int check_validity_1(coordi p, coordi q) {
         j2 = j1 + 1;
         if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
             continue;
-        if (((int)blue_img.at<Vec3b>(i, j1)[0] > 50) || ((int)blue_img.at<Vec3b>(i, j1)[1] > 50) || ((int)blue_img.at<Vec3b>(i, j1)[2] > 50))
+        if (pointInsideRect(Point(i, j1), brownBoundRect[0].tl(), brownBoundRect[0].br()))
             return 0;
-        if (((int)blue_img.at<Vec3b>(i, j2)[0] > 50) || ((int)blue_img.at<Vec3b>(i, j2)[1] > 50) || ((int)blue_img.at<Vec3b>(i, j2)[2] > 50))
+        if (pointInsideRect(Point(i, j2), brownBoundRect[0].tl(), brownBoundRect[0].br()))
             return 0;
     }
 
@@ -314,9 +338,9 @@ int check_validity_2(coordi p, coordi q) {
         j2 = j1 + 1;
         if (i < 0 || j1 < 0 || j2 < 0 || i > src.rows || j1 > src.cols || j2 > src.cols)
             continue;
-        if (((int)blue_img.at<Vec3b>(i, j1)[0] > 50) || ((int)blue_img.at<Vec3b>(i, j1)[1] > 50) || ((int)blue_img.at<Vec3b>(i, j1)[2] > 50))
+        if (pointInsideRect(Point(i, j1), brownBoundRect[0].tl(), brownBoundRect[0].br()))
             return 0;
-        if (((int)blue_img.at<Vec3b>(i, j2)[0] > 50) || ((int)blue_img.at<Vec3b>(i, j2)[1] > 50) || ((int)blue_img.at<Vec3b>(i, j2)[2] > 50))
+        if (pointInsideRect(Point(i, j2), brownBoundRect[0].tl(), brownBoundRect[0].br()))
             return 0;
     }
 
@@ -401,9 +425,6 @@ void continue_moving() {
 }*/
 
 void thresh_callback(int, void *) {
-    Mat yellow_output, blue_output, head_output, tail_output, brown_output;
-    vector<vector<Point> > head_contours, tail_contours, yellow_contours, green_contours, blue_contours, brown_contours, red_contours;
-    vector<Vec4i> head_hierarchy, tail_hierarchy, yellow_hierarchy, green_hierarchy, blue_hierarchy, brown_hierarchy, red_hierarchy;
 
     threshold(yellow_img, yellow_output, binary_thresh, 255, THRESH_BINARY);
     threshold(blue_img, blue_output, binary_thresh, 255, THRESH_BINARY);
@@ -423,56 +444,46 @@ void thresh_callback(int, void *) {
     findContours(blue_output, blue_contours, blue_hierarchy,
                  CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
 
-    vector<vector<Point> > head_contours_poly(head_contours.size());
-    vector<vector<Point> > tail_contours_poly(tail_contours.size());
-    vector<vector<Point> > yellow_contours_poly(yellow_contours.size());
-    vector<vector<Point> > green_contours_poly(green_contours.size());
-    vector<vector<Point> > blue_contours_poly(blue_contours.size());
-    vector<vector<Point> > brown_contours_poly(brown_contours.size());
-    vector<vector<Point> > red_contours_poly(red_contours.size());
-
-    vector<Rect> headBoundRect(head_contours.size());
-    vector<Rect> tailBoundRect(tail_contours.size());
-    vector<Rect> yellowBoundRect(yellow_contours.size());
-    vector<Rect> greenBoundRect(green_contours.size());
-    vector<Rect> blueBoundRect(blue_contours.size());
-    vector<Rect> brownBoundRect(brown_contours.size());
-    vector<Rect> redBoundRect(red_contours.size());
+    head_contours_poly.resize(head_contours.size());
+    tail_contours_poly.resize(tail_contours.size());
+    yellow_contours_poly.resize(yellow_contours.size());
+    blue_contours_poly.resize(blue_contours.size());
+    brown_contours_poly.resize(brown_contours.size());
 
     for (int i = 0; i < head_contours.size(); i++) {
         approxPolyDP(Mat(head_contours[i]), head_contours_poly[i], 3, true);
         if (contourArea(head_contours[i]) > 100)
-            headBoundRect[i] = boundingRect(Mat(head_contours_poly[i]));
+            headBoundRect.push_back(boundingRect(Mat(head_contours_poly[i])));
     }
 
     for (int i = 0; i < tail_contours.size(); i++) {
         approxPolyDP(Mat(tail_contours[i]), tail_contours_poly[i], 3, true);
         if (contourArea(tail_contours[i]) > 500)
-            tailBoundRect[i] = boundingRect(Mat(tail_contours_poly[i]));
+            tailBoundRect.push_back(boundingRect(Mat(tail_contours_poly[i])));
     }
 
     for (int i = 0; i < yellow_contours.size(); i++) {
         approxPolyDP(Mat(yellow_contours[i]), yellow_contours_poly[i], 3, true);
         if (contourArea(yellow_contours[i]) > 100)
-            yellowBoundRect[i] = boundingRect(Mat(yellow_contours_poly[i]));
+            yellowBoundRect.push_back(boundingRect(Mat(yellow_contours_poly[i])));
     }
 
     for (int i = 0; i < green_contours.size(); i++) {
         approxPolyDP(Mat(green_contours[i]), green_contours_poly[i], 3, true);
         if (contourArea(green_contours[i]) > 100)
-            greenBoundRect[i] = boundingRect(Mat(green_contours_poly[i]));
+            greenBoundRect.push_back(boundingRect(Mat(green_contours_poly[i])));
     }
 
     for (int i = 0; i < blue_contours.size(); i++) {
         approxPolyDP(Mat(blue_contours[i]), blue_contours_poly[i], 3, true);
         if (contourArea(blue_contours[i]) > 100)
-            blueBoundRect[i] = boundingRect(Mat(blue_contours_poly[i]));
+            blueBoundRect.push_back(boundingRect(Mat(blue_contours_poly[i])));
     }
 
     for (int i = 0; i < brown_contours.size(); i++) {
         approxPolyDP(Mat(brown_contours[i]), brown_contours_poly[i], 3, true);
         if (contourArea(brown_contours[i]) > 500)
-            brownBoundRect[i] = boundingRect(Mat(brown_contours_poly[i]));
+            brownBoundRect.push_back(boundingRect(Mat(brown_contours_poly[i])));
     }
 
     head_drawing = Mat::zeros(src.size(), CV_8UC3);
@@ -482,15 +493,17 @@ void thresh_callback(int, void *) {
     brown_drawing = Mat::zeros(src.size(), CV_8UC3);
     yellow_drawing = Mat::zeros(src.size(), CV_8UC3);
 
-    for (int i = 0; i < headBoundRect.size(); i++) {
+    for (int i = 0; i < head_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(head_drawing, headBoundRect[i].tl(), headBoundRect[i].br(), color, 2, 8, 0);
+        break;
     }
-    for (int i = 0; i < tailBoundRect.size(); i++) {
+    for (int i = 0; i < tail_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(tail_drawing, tailBoundRect[i].tl(), tailBoundRect[i].br(), color, 2, 8, 0);
+        break;
     }
-    for (int i = 0; i < yellowBoundRect.size(); i++) {
+    for (int i = 0; i < yellow_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(yellow_drawing, yellowBoundRect[i].tl(), yellowBoundRect[i].br(), color, 2, 8, 0);
         Point centre_rect = (yellowBoundRect[i].tl() + yellowBoundRect[i].br());
@@ -499,26 +512,28 @@ void thresh_callback(int, void *) {
         if (!initial)
             target_resources.push_back(centre_rect);
     }
-    for (int i = 0; i < blueBoundRect.size(); i++) {
+    for (int i = 0; i < blue_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(blue_drawing, blueBoundRect[i].tl(), blueBoundRect[i].br(), color, 2, 8, 0);
-        Point centre_rect = (blueBoundRect[i].tl() + blueBoundRect[i].br());
-        centre_rect.x /= 2;
-        centre_rect.y /= 2;
-        if (!initial)
-            target_resources.push_back(centre_rect);
     }
-    for (int i = 0; i < brownBoundRect.size(); i++) {
+    for (int i = 0; i < brown_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(brown_drawing, brownBoundRect[i].tl(), brownBoundRect[i].br(), color, 2, 8, 0);
         Point centre_rect = (brownBoundRect[i].tl() + brownBoundRect[i].br());
         centre_rect.x /= 2;
         centre_rect.y /= 2;
-        if (centre_rect.x != 0 && centre_rect.y != 0)
-            town_centre = centre_rect;
+        if (centre_rect.x != 0 && centre_rect.y != 0) {
+            town_centre = brownBoundRect[i].tl();
+            break;
+        }
     }
     initial++;
     end_target = target_resources[0];
+    for (int i = -5; i < 5; i++) {
+        for (int j = -5; j < 5; j++) {
+            path_img.at<Vec3b>(i + town_centre.x, j + town_centre.y) = {255, 255, 255};
+        }
+    }
 
     imshow("Head Contours", head_drawing);
     imshow("Tail Contours", tail_drawing);
