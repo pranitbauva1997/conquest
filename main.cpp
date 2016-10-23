@@ -54,6 +54,11 @@ Mat path_img;
 
 RNG rng(12345);
 
+/* Arduino code */
+int arduino = -1;
+void sendCommand(const char *command);
+void init_arduino(const char *file);
+
 struct hsv_trackbar {
     int h_low;
     int h_high;
@@ -151,11 +156,16 @@ void init_hsvcolor() {
 int main(int argc, const char **argv) {
     VideoCapture cap(1);
 
+    if (argc < 2) {
+        fprintf(stderr, "Please enter the ardunio dev file\n");
+        return -1;
+    }
     if (!cap.isOpened()) {
         fprintf(stderr, "ERROR!\n");
         return -1;
     }
 
+    init_arduino(argv[0]);
     init_hsvcolor();
     //init_trackbars();
 
@@ -220,6 +230,17 @@ void get_path() {
 
 void move_bot() {
 
+}
+
+void sendCommand(const char *command) {
+    write(arduino, command, 1);
+    printf("sending: %s\n", command);
+}
+
+void init_arduino(const char *file) {
+    arduino = open(file, O_RDWR || O_NOCTTY);
+    if (arduino)
+        exit(255);
 }
 
 /*
