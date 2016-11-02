@@ -4,7 +4,7 @@
 #define R_MOTOR_POSITIVE 6
 #define R_MOTOR_NEGATIVE 11
 #define R_MOTOR_ENABLE 5
-#define MAX_SPEED 255
+#define MAX_SPEED 100
 
 /*
  * Movements:
