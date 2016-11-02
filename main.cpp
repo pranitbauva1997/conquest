@@ -12,10 +12,6 @@ using namespace std;
 
 VideoCapture cap(1);
 
-Mat src, src_gray, imgHSV, yellow_img, green_img, blue_img, brown_img, red_img, head_img, tail_img;
-Mat yellow_drawing, green_drawing, blue_drawing, brown_drawing, red_drawing, head_drawing, tail_drawing;
-Mat yellow_output, blue_output, head_output, tail_output, brown_output;
-
 int binary_thresh = 100;
 int initial = 0;
 
@@ -144,28 +140,14 @@ int main(int argc, const char **argv) {
     // init_trackbars();
 
     while(1) {
-
-        /* Compute Path and move bot's ass
-        if (status == IN_BETWEEN_PATH) {
-            continue_moving();
-        } else if (status == START_POINT) {
-            get_path_to_start_point();
-            status == IN_BETWEEN_PATH;
-        } else if (status == RESOURCE) {
-            get_path_to_end_point();
-            status = IN_BETWEEN_PATH;
-        }
-
-        check_status(); */
-
         createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
         thresh_callback(0, 0);
         if (status == START_POINT) {
             get_path();
-            //move_bot();
+            move_bot();
         }
         imshow("Path", path_img);
-        waitKey(30);
+        waitKey(10);
     }
 
     return 0;
@@ -198,8 +180,9 @@ void move_bot() {
     float d;
     do {
         d = dist(current_point, end_point);
-        //printf("(%d, %d)\n", current_point.x, current_point.y);
-        //printf("distance: %f\n", d);
+        printf("End Point: (%d, %d)\n", end_point.x, end_point.y);
+        printf("Current Point: (%d, %d)\n", current_point.x, current_point.y);
+        printf("distance: %f\n", d);
         if (abs(angle_between(head_point, tail_point, end_point, current_point)) < 5)  {
             if (previous != 'W') {
                 sendCommand("W");
@@ -219,8 +202,7 @@ void move_bot() {
             }
         }
         thresh_callback(0, 0);
-        sleep(1);
-    } while (d > 100);
+    } while (d > 110);
     sendCommand("S");
 }
 
@@ -256,6 +238,11 @@ void continue_moving() {
 }*/
 
 void thresh_callback(int, void *) {
+
+	Mat src, src_gray, imgHSV, yellow_img, green_img, blue_img, brown_img, red_img, head_img, tail_img;
+	Mat yellow_drawing, green_drawing, blue_drawing, brown_drawing, red_drawing, head_drawing, tail_drawing;
+	Mat yellow_output, blue_output, head_output, tail_output, brown_output;
+
     vector<vector<Point> > head_contours, tail_contours, yellow_contours, green_contours, blue_contours, brown_contours, red_contours;
     vector<Vec4i> head_hierarchy, tail_hierarchy, yellow_hierarchy, green_hierarchy, blue_hierarchy, brown_hierarchy, red_hierarchy;
     vector<vector<Point> > head_contours_poly;
@@ -360,13 +347,13 @@ void thresh_callback(int, void *) {
     for (int i = 0; i < head_contours_poly.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(head_drawing, headBoundRect[i].tl(), headBoundRect[i].br(), color, 2, 8, 0);
-        head_point = headBoundRect[i].tl() + headBoundRect[i].br();
+        head_point = (headBoundRect[i].tl() + headBoundRect[i].br());
         break;
     }
     for (int i = 0; i < tail_contours_poly.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(tail_drawing, tailBoundRect[i].tl(), tailBoundRect[i].br(), color, 2, 8, 0);
-        tail_point = tailBoundRect[i].tl() + tailBoundRect[i].br();
+        tail_point = (tailBoundRect[i].tl() + tailBoundRect[i].br());
         break;
     }
     for (int i = 0; i < yellow_contours_poly.size(); i++) {
@@ -408,8 +395,14 @@ void thresh_callback(int, void *) {
     initial++;
 
     // Update the bot values
-    current_point.x = (head_point.x + tail_point.x) / 2;
-    current_point.y = (head_point.y + tail_point.y) / 2;
+    current_point.x = (head_point.x + tail_point.x) / 4;
+    current_point.y = (head_point.y + tail_point.y) / 4;
+
+    for (int i = -5; i < 5; i++) {
+        for (int j = -5; j < 5; j++) {
+            path_img.at<Vec3b>(i + current_point.y, j + current_point.x) = {255, 255, 255};
+        }
+    }
 
     imshow("Head Contours", head_drawing);
     imshow("Tail Contours", tail_drawing);
