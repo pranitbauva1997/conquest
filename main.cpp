@@ -10,26 +10,11 @@
 using namespace cv;
 using namespace std;
 
+VideoCapture cap(1);
+
 Mat src, src_gray, imgHSV, yellow_img, green_img, blue_img, brown_img, red_img, head_img, tail_img;
-Mat yellow_img_poly, green_img_poly, blue_img_poly, brown_img_poly, red_img_poly, head_img_poly, tail_img_poly;
 Mat yellow_drawing, green_drawing, blue_drawing, brown_drawing, red_drawing, head_drawing, tail_drawing;
 Mat yellow_output, blue_output, head_output, tail_output, brown_output;
-vector<vector<Point> > head_contours, tail_contours, yellow_contours, green_contours, blue_contours, brown_contours, red_contours;
-vector<Vec4i> head_hierarchy, tail_hierarchy, yellow_hierarchy, green_hierarchy, blue_hierarchy, brown_hierarchy, red_hierarchy;
-vector<vector<Point> > head_contours_poly;
-vector<vector<Point> > tail_contours_poly;
-vector<vector<Point> > yellow_contours_poly;
-vector<vector<Point> > green_contours_poly;
-vector<vector<Point> > blue_contours_poly;
-vector<vector<Point> > brown_contours_poly;
-vector<vector<Point> > red_contours_poly;
-vector<Rect> headBoundRect;
-vector<Rect> tailBoundRect;
-vector<Rect> yellowBoundRect;
-vector<Rect> greenBoundRect;
-vector<Rect> blueBoundRect;
-vector<Rect> brownBoundRect;
-vector<Rect> redBoundRect;
 
 int binary_thresh = 100;
 int initial = 0;
@@ -41,11 +26,12 @@ enum state {
     IN_BETWEEN_PATH,
     END_POINT,
     BLINK_LED
-};
+} status = START_POINT;
 
 vector<Point> target_resources;
 Point town_centre, bot_position;
 Point start_point, end_point, current_point;
+Point head_point, tail_point;
 
 void get_path();
 void move_bot();
@@ -58,6 +44,8 @@ RNG rng(12345);
 int arduino = -1;
 void sendCommand(const char *command);
 void init_arduino(const char *file);
+int dist(Point a, Point b);
+int angle_between(Point a, Point b, Point c, Point d);
 
 struct hsv_trackbar {
     int h_low;
@@ -133,17 +121,17 @@ void init_hsvcolor() {
     red.s_high = 0;
     red.v_low = 0;
     red.v_high = 0;
-    head.h_low = 109;
-    head.h_high = 139;
-    head.s_low = 66;
-    head.s_high = 97;
-    head.v_low = 183;
+    head.h_low = 0;
+    head.h_high = 13;
+    head.s_low = 0;
+    head.s_high = 182;
+    head.v_low = 219;
     head.v_high = 255;
-    tail.h_low = 0;
-    tail.h_high = 13;
-    tail.s_low = 0;
-    tail.s_high = 182;
-    tail.v_low = 219;
+    tail.h_low = 109;
+    tail.h_high = 139;
+    tail.s_low = 66;
+    tail.s_high = 97;
+    tail.v_low = 183;
     tail.v_high = 255;
     blue.h_low = 75;
     blue.h_high = 85;
@@ -154,8 +142,6 @@ void init_hsvcolor() {
 }
 
 int main(int argc, const char **argv) {
-    VideoCapture cap(1);
-
     if (argc < 2) {
         fprintf(stderr, "Please enter the ardunio dev file\n");
         return -1;
@@ -165,31 +151,11 @@ int main(int argc, const char **argv) {
         return -1;
     }
 
-    init_arduino(argv[0]);
+    init_arduino(argv[1]);
     init_hsvcolor();
     //init_trackbars();
 
-    state status = START_POINT;
-
     while(1) {
-        cap >> src;
-        if (status == START_POINT)
-            path_img = Mat::zeros(src.size(), CV_8UC3);
-        cvtColor(src, imgHSV, CV_BGR2HSV);
-        inRange(imgHSV, Scalar(yellow.h_low, yellow.s_low, yellow.v_low),
-                Scalar(yellow.h_high, yellow.s_high, yellow.v_high), yellow_img);
-        inRange(imgHSV, Scalar(blue.h_low, blue.s_low, blue.v_low),
-                Scalar(blue.h_high, blue.s_high, blue.v_high), blue_img);
-        inRange(imgHSV, Scalar(brown.h_low, brown.s_low, brown.v_low),
-                Scalar(brown.h_high, brown.s_high, brown.v_high), brown_img);
-        inRange(imgHSV, Scalar(red.h_low, red.s_low, red.v_low),
-                Scalar(red.h_high, red.s_high, red.v_high), red_img);
-        inRange(imgHSV, Scalar(head.h_low, head.s_low, head.v_low),
-                Scalar(head.h_high, head.s_high, head.v_high), head_img);
-        inRange(imgHSV, Scalar(tail.h_low, tail.s_low, tail.v_low),
-                Scalar(tail.h_high, tail.s_high, tail.v_high), tail_img);
-
-        imshow("Source", src);
         //imshow("Head", head_img);
         //imshow("Tail", tail_img);
         //imshow("Yellow", yellow_img);
@@ -217,7 +183,7 @@ int main(int argc, const char **argv) {
             get_path();
             move_bot();
         }
-        imshow("RRT Path", path_img);
+        imshow("Path", path_img);
         waitKey(30);
     }
 
@@ -225,22 +191,69 @@ int main(int argc, const char **argv) {
 }
 
 void get_path() {
+    line(path_img, town_centre, end_point, Scalar(255, 255, 255), 2, 8);
+}
 
+int dist(Point a, Point b) {
+    return (int) sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2));
+}
+
+int angle_between(Point a, Point b, Point c, Point d) {
+    float slope1, slope2;
+    slope1 = (b.y - a.y) / (b.x - a.x);
+    slope2 = (d.y - c.y) / (d.x - c.x);
+
+    float inter_angle = atan(slope2) - atan(slope1);
+    /*
+     * If positive, then bot has to take a left. Similarly,
+     * if negative, then bot has to take a right.
+     */
+    return (int) inter_angle;
 }
 
 void move_bot() {
-
+    status = IN_BETWEEN_PATH;
+    char previous;
+    float d;
+    do {
+        d = dist(current_point, end_point);
+        //printf("(%d, %d)\n", current_point.x, current_point.y);
+        //printf("distance: %f\n", d);
+        if (abs(angle_between(head_point, tail_point, end_point, current_point)) < 5)  {
+            if (previous != 'W') {
+                sendCommand("W");
+                previous = 'W';
+            }
+        }
+        else if (angle_between(head_point, tail_point, end_point, current_point) > 5) {
+            if (previous != 'A') {
+                sendCommand("A");
+                previous = 'A';
+            }
+        }
+        else if (angle_between(head_point, tail_point, end_point, current_point) < -5) {
+            if (previous != 'D') {
+                sendCommand("D");
+                previous = 'D';
+            }
+        }
+        thresh_callback(0, 0);
+        sleep(1);
+    } while (d > 100);
+    sendCommand("S");
 }
 
 void sendCommand(const char *command) {
     write(arduino, command, 1);
-    printf("sending: %s\n", command);
+    //printf("sending: %s\n", command);
 }
 
 void init_arduino(const char *file) {
     arduino = open(file, O_RDWR || O_NOCTTY);
-    if (arduino)
+    if (arduino < 0) {
+        fprintf(stderr, "Couldn't access the arduino device\n");
         exit(255);
+    }
 }
 
 /*
@@ -262,6 +275,42 @@ void continue_moving() {
 }*/
 
 void thresh_callback(int, void *) {
+    vector<vector<Point> > head_contours, tail_contours, yellow_contours, green_contours, blue_contours, brown_contours, red_contours;
+    vector<Vec4i> head_hierarchy, tail_hierarchy, yellow_hierarchy, green_hierarchy, blue_hierarchy, brown_hierarchy, red_hierarchy;
+    vector<vector<Point> > head_contours_poly;
+    vector<vector<Point> > tail_contours_poly;
+    vector<vector<Point> > yellow_contours_poly;
+    vector<vector<Point> > green_contours_poly;
+    vector<vector<Point> > blue_contours_poly;
+    vector<vector<Point> > brown_contours_poly;
+    vector<vector<Point> > red_contours_poly;
+    vector<Rect> headBoundRect;
+    vector<Rect> tailBoundRect;
+    vector<Rect> yellowBoundRect;
+    vector<Rect> greenBoundRect;
+    vector<Rect> blueBoundRect;
+    vector<Rect> brownBoundRect;
+    vector<Rect> redBoundRect;
+
+    cap >> src;
+    cvtColor(src, imgHSV, CV_BGR2HSV);
+    imshow("Source", src);
+
+    if (status == START_POINT)
+        path_img = Mat::zeros(src.size(), CV_8UC3);
+
+    inRange(imgHSV, Scalar(yellow.h_low, yellow.s_low, yellow.v_low),
+            Scalar(yellow.h_high, yellow.s_high, yellow.v_high), yellow_img);
+    inRange(imgHSV, Scalar(blue.h_low, blue.s_low, blue.v_low),
+            Scalar(blue.h_high, blue.s_high, blue.v_high), blue_img);
+    inRange(imgHSV, Scalar(brown.h_low, brown.s_low, brown.v_low),
+            Scalar(brown.h_high, brown.s_high, brown.v_high), brown_img);
+    inRange(imgHSV, Scalar(red.h_low, red.s_low, red.v_low),
+            Scalar(red.h_high, red.s_high, red.v_high), red_img);
+    inRange(imgHSV, Scalar(head.h_low, head.s_low, head.v_low),
+            Scalar(head.h_high, head.s_high, head.v_high), head_img);
+    inRange(imgHSV, Scalar(tail.h_low, tail.s_low, tail.v_low),
+            Scalar(tail.h_high, tail.s_high, tail.v_high), tail_img);
 
     threshold(yellow_img, yellow_output, binary_thresh, 255, THRESH_BINARY);
     threshold(blue_img, blue_output, binary_thresh, 255, THRESH_BINARY);
@@ -295,7 +344,7 @@ void thresh_callback(int, void *) {
 
     for (int i = 0; i < tail_contours.size(); i++) {
         approxPolyDP(Mat(tail_contours[i]), tail_contours_poly[i], 3, true);
-        if (contourArea(tail_contours[i]) > 500)
+        if (contourArea(tail_contours[i]) > 100)
             tailBoundRect.push_back(boundingRect(Mat(tail_contours_poly[i])));
     }
 
@@ -319,7 +368,7 @@ void thresh_callback(int, void *) {
 
     for (int i = 0; i < brown_contours.size(); i++) {
         approxPolyDP(Mat(brown_contours[i]), brown_contours_poly[i], 3, true);
-        if (contourArea(brown_contours[i]) > 500)
+        if (contourArea(brown_contours[i]) > 100)
             brownBoundRect.push_back(boundingRect(Mat(brown_contours_poly[i])));
     }
 
@@ -333,11 +382,13 @@ void thresh_callback(int, void *) {
     for (int i = 0; i < head_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(head_drawing, headBoundRect[i].tl(), headBoundRect[i].br(), color, 2, 8, 0);
+        head_point = headBoundRect[i].tl() + headBoundRect[i].br();
         break;
     }
     for (int i = 0; i < tail_contours.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(tail_drawing, tailBoundRect[i].tl(), tailBoundRect[i].br(), color, 2, 8, 0);
+        tail_point = tailBoundRect[i].tl() + tailBoundRect[i].br();
         break;
     }
     for (int i = 0; i < yellow_contours.size(); i++) {
@@ -360,27 +411,31 @@ void thresh_callback(int, void *) {
         centre_rect.x /= 2;
         centre_rect.y /= 2;
         if (centre_rect.x != 0 && centre_rect.y != 0) {
-            town_centre = brownBoundRect[i].tl();
+            town_centre = centre_rect;
             break;
         }
     }
-    initial++;
     end_point = target_resources[0];
     for (int i = -5; i < 5; i++) {
         for (int j = -5; j < 5; j++) {
-            path_img.at<Vec3b>(i + town_centre.x, j + town_centre.y) = {255, 255, 255};
+            path_img.at<Vec3b>(i + town_centre.y, j + town_centre.x) = {255, 255, 255};
         }
     }
 
     for (int i = -5; i < 5; i++) {
         for (int j = -5; j < 5; j++) {
-            path_img.at<Vec3b>(i + end_point.x, j + end_point.y) = {255, 255, 255};
+            path_img.at<Vec3b>(i + end_point.y, j + end_point.x) = {255, 255, 255};
         }
     }
+    initial++;
+
+    /* Update the bot values */
+    current_point.x = (head_point.x + tail_point.x) / 2;
+    current_point.y = (head_point.y + tail_point.y) / 2;
 
     imshow("Head Contours", head_drawing);
     imshow("Tail Contours", tail_drawing);
-    imshow("Yellow Contours", yellow_drawing);
-    imshow("Blue Contours", blue_drawing);
-    imshow("Brown Contours", brown_drawing);
+    //imshow("Yellow Contours", yellow_drawing);
+    //imshow("Blue Contours", blue_drawing);
+    //imshow("Brown Contours", brown_drawing);
 }
