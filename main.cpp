@@ -97,43 +97,31 @@ void init_trackbars() {
 }
 
 void init_hsvcolor() {
-    yellow.h_low = 27;
-    yellow.h_high = 39;
-    yellow.s_low = 60;
+    yellow.h_low = 16;
+    yellow.h_high = 34;
+    yellow.s_low = 188;
     yellow.s_high = 255;
-    yellow.v_low = 234;
+    yellow.v_low = 233;
     yellow.v_high = 255;
-    green.h_low = 0;
-    green.h_high = 0;
-    green.s_low = 0;
-    green.s_high = 0;
-    green.v_low = 0;
-    green.v_high = 0;
-    brown.h_low = 10;
-    brown.h_high = 16;
-    brown.s_low = 55;
-    brown.s_high = 85;
-    brown.v_low = 188;
-    brown.v_high = 210;
-    red.h_low = 0;
-    red.h_high = 0;
-    red.s_low = 0;
-    red.s_high = 0;
-    red.v_low = 0;
-    red.v_high = 0;
-    head.h_low = 0;
-    head.h_high = 13;
-    head.s_low = 0;
-    head.s_high = 182;
-    head.v_low = 219;
-    head.v_high = 255;
-    tail.h_low = 109;
-    tail.h_high = 139;
-    tail.s_low = 66;
-    tail.s_high = 97;
+    brown.h_low = 7;
+    brown.h_high = 17;
+    brown.s_low = 102;
+    brown.s_high = 153;
+    brown.v_low = 87;
+    brown.v_high = 255;
+    head.h_low = 117;
+    head.h_high = 140;
+    head.s_low = 41;
+    head.s_high = 102;
+    head.v_low = 74;
+    head.v_high = 189;
+    tail.h_low = 4;
+    tail.h_high = 50;
+    tail.s_low = 8;
+    tail.s_high = 112;
     tail.v_low = 183;
     tail.v_high = 255;
-    blue.h_low = 75;
+    blue.h_low = 44;
     blue.h_high = 85;
     blue.s_low = 0;
     blue.s_high = 18;
@@ -153,16 +141,9 @@ int main(int argc, const char **argv) {
 
     init_arduino(argv[1]);
     init_hsvcolor();
-    //init_trackbars();
+    // init_trackbars();
 
     while(1) {
-        //imshow("Head", head_img);
-        //imshow("Tail", tail_img);
-        //imshow("Yellow", yellow_img);
-        //imshow("Green", green_img);
-        //imshow("Blue", blue_img);
-        //imshow("Brown", brown_img);
-        //imshow("Red", red_img);
 
         /* Compute Path and move bot's ass
         if (status == IN_BETWEEN_PATH) {
@@ -181,7 +162,7 @@ int main(int argc, const char **argv) {
         thresh_callback(0, 0);
         if (status == START_POINT) {
             get_path();
-            move_bot();
+            //move_bot();
         }
         imshow("Path", path_img);
         waitKey(30);
@@ -305,12 +286,16 @@ void thresh_callback(int, void *) {
             Scalar(blue.h_high, blue.s_high, blue.v_high), blue_img);
     inRange(imgHSV, Scalar(brown.h_low, brown.s_low, brown.v_low),
             Scalar(brown.h_high, brown.s_high, brown.v_high), brown_img);
-    inRange(imgHSV, Scalar(red.h_low, red.s_low, red.v_low),
-            Scalar(red.h_high, red.s_high, red.v_high), red_img);
     inRange(imgHSV, Scalar(head.h_low, head.s_low, head.v_low),
             Scalar(head.h_high, head.s_high, head.v_high), head_img);
     inRange(imgHSV, Scalar(tail.h_low, tail.s_low, tail.v_low),
             Scalar(tail.h_high, tail.s_high, tail.v_high), tail_img);
+
+    // imshow("Head", head_img);
+    // imshow("Tail", tail_img);
+    // imshow("Yellow", yellow_img);
+    // imshow("Blue", blue_img);
+    // imshow("Brown", brown_img);
 
     threshold(yellow_img, yellow_output, binary_thresh, 255, THRESH_BINARY);
     threshold(blue_img, blue_output, binary_thresh, 255, THRESH_BINARY);
@@ -354,12 +339,6 @@ void thresh_callback(int, void *) {
             yellowBoundRect.push_back(boundingRect(Mat(yellow_contours_poly[i])));
     }
 
-    for (int i = 0; i < green_contours.size(); i++) {
-        approxPolyDP(Mat(green_contours[i]), green_contours_poly[i], 3, true);
-        if (contourArea(green_contours[i]) > 100)
-            greenBoundRect.push_back(boundingRect(Mat(green_contours_poly[i])));
-    }
-
     for (int i = 0; i < blue_contours.size(); i++) {
         approxPolyDP(Mat(blue_contours[i]), blue_contours_poly[i], 3, true);
         if (contourArea(blue_contours[i]) > 100)
@@ -374,24 +353,23 @@ void thresh_callback(int, void *) {
 
     head_drawing = Mat::zeros(src.size(), CV_8UC3);
     tail_drawing = Mat::zeros(src.size(), CV_8UC3);
-    green_drawing = Mat::zeros(src.size(), CV_8UC3);
     blue_drawing = Mat::zeros(src.size(), CV_8UC3);
     brown_drawing = Mat::zeros(src.size(), CV_8UC3);
     yellow_drawing = Mat::zeros(src.size(), CV_8UC3);
 
-    for (int i = 0; i < head_contours.size(); i++) {
+    for (int i = 0; i < head_contours_poly.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(head_drawing, headBoundRect[i].tl(), headBoundRect[i].br(), color, 2, 8, 0);
         head_point = headBoundRect[i].tl() + headBoundRect[i].br();
         break;
     }
-    for (int i = 0; i < tail_contours.size(); i++) {
+    for (int i = 0; i < tail_contours_poly.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(tail_drawing, tailBoundRect[i].tl(), tailBoundRect[i].br(), color, 2, 8, 0);
         tail_point = tailBoundRect[i].tl() + tailBoundRect[i].br();
         break;
     }
-    for (int i = 0; i < yellow_contours.size(); i++) {
+    for (int i = 0; i < yellow_contours_poly.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(yellow_drawing, yellowBoundRect[i].tl(), yellowBoundRect[i].br(), color, 2, 8, 0);
         Point centre_rect = (yellowBoundRect[i].tl() + yellowBoundRect[i].br());
@@ -400,11 +378,11 @@ void thresh_callback(int, void *) {
         if (!initial)
             target_resources.push_back(centre_rect);
     }
-    for (int i = 0; i < blue_contours.size(); i++) {
+    for (int i = 0; i < blue_contours_poly.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(blue_drawing, blueBoundRect[i].tl(), blueBoundRect[i].br(), color, 2, 8, 0);
     }
-    for (int i = 0; i < brown_contours.size(); i++) {
+    for (int i = 0; i < brown_contours_poly.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
         rectangle(brown_drawing, brownBoundRect[i].tl(), brownBoundRect[i].br(), color, 2, 8, 0);
         Point centre_rect = (brownBoundRect[i].tl() + brownBoundRect[i].br());
@@ -415,7 +393,7 @@ void thresh_callback(int, void *) {
             break;
         }
     }
-    end_point = target_resources[0];
+    end_point = target_resources[1];
     for (int i = -5; i < 5; i++) {
         for (int j = -5; j < 5; j++) {
             path_img.at<Vec3b>(i + town_centre.y, j + town_centre.x) = {255, 255, 255};
@@ -429,13 +407,13 @@ void thresh_callback(int, void *) {
     }
     initial++;
 
-    /* Update the bot values */
+    // Update the bot values
     current_point.x = (head_point.x + tail_point.x) / 2;
     current_point.y = (head_point.y + tail_point.y) / 2;
 
     imshow("Head Contours", head_drawing);
     imshow("Tail Contours", tail_drawing);
-    //imshow("Yellow Contours", yellow_drawing);
-    //imshow("Blue Contours", blue_drawing);
-    //imshow("Brown Contours", brown_drawing);
+    imshow("Yellow Contours", yellow_drawing);
+    imshow("Blue Contours", blue_drawing);
+    imshow("Brown Contours", brown_drawing);
 }
