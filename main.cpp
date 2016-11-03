@@ -41,7 +41,7 @@ int arduino = -1;
 void sendCommand(const char *command);
 void init_arduino(const char *file);
 int dist(Point a, Point b);
-float angle_between(Point a, Point b, Point c);
+float angle_between(Point a, Point b, Point c, Point d);
 
 struct hsv_trackbar {
     int h_low;
@@ -161,15 +161,12 @@ int dist(Point a, Point b) {
     return (int) sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2));
 }
 
-float angle_between(Point a, Point b, Point c) {
+float angle_between(Point a, Point b, Point c, Point d) {
     float slope1, slope2;
     slope1 = (float) (a.y - b.y) / (a.x - b.x);
-    slope2 = (float) (c.y - b.y) / (c.x - b.x);
+    slope2 = (float) (c.y - d.y) / (c.x - d.x);
 
-    printf("slope1: %f\n", slope1);
-    printf("slope2: %f\n", slope2);
-
-    float inter_angle = (atan(slope2) - atan(slope1)) * 180 / 3.14;
+    float inter_angle = (atan(slope2) - atan(slope1)) * 180;
     /*
      * If positive, then bot has to take a left. Similarly,
      * if negative, then bot has to take a right.
@@ -183,11 +180,8 @@ void move_bot() {
     float d, angle;
     do {
         d = dist(current_point, end_point);
-        printf("End Point: (%d, %d)\n", end_point.x, end_point.y);
-        printf("Town Centre: (%d, %d)\n", town_centre.x, town_centre.y);
-        printf("Current Point: (%d, %d)\n", current_point.x, current_point.y);
         printf("Distance: %f\n", d);
-        angle = angle_between(end_point, town_centre, current_point);
+        angle = angle_between(end_point, town_centre, head_point, tail_point);
         printf("Angle: %f\n", angle);
         if (angle > 1) {
             if (previous != 'D') {
