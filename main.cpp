@@ -10,7 +10,7 @@
 using namespace cv;
 using namespace std;
 
-VideoCapture cap(1);
+VideoCapture cap(0);
 
 int binary_thresh = 100;
 int initial = 0;
@@ -166,7 +166,7 @@ float angle_between(Point a, Point b, Point c, Point d) {
     slope1 = (float) (a.y - b.y) / (a.x - b.x);
     slope2 = (float) (c.y - d.y) / (c.x - d.x);
 
-    float inter_angle = (atan(slope2) - atan(slope1)) * 180;
+    float inter_angle = (atan(slope2) - atan(slope1)) * 180 / 3.14;
     /*
      * If positive, then bot has to take a left. Similarly,
      * if negative, then bot has to take a right.
@@ -180,29 +180,32 @@ void move_bot() {
     float d, angle;
     do {
         d = dist(current_point, end_point);
-        printf("Distance: %f\n", d);
         angle = angle_between(end_point, town_centre, head_point, tail_point);
         printf("Angle: %f\n", angle);
-        if (angle > 1) {
-            if (previous != 'D') {
-                previous = 'D';
-                sendCommand("D");
-            }
-        }
-        else if (angle < -1) {
+        printf("Distance: %f\n", d);
+        if (angle > 10) {
             if (previous != 'A') {
                 previous = 'A';
                 sendCommand("A");
+                printf("A\n");
             }
         }
-        else if (angle < 1 && angle > -1) {
+        else if (angle < -10) {
+            if (previous != 'D') {
+                previous = 'D';
+                sendCommand("D");
+                printf("D\n");
+            }
+        }
+        else if (angle <= 10 && angle >= -10) {
             if (previous != 'W') {
                 previous = 'W';
                 sendCommand("W");
+                printf("W\n");
             }
         }
         thresh_callback(0, 0);
-    } while (d > 80);
+    } while (d > 50);
     sendCommand("S");
 }
 
@@ -278,11 +281,11 @@ void thresh_callback(int, void *) {
     inRange(imgHSV, Scalar(tail.h_low, tail.s_low, tail.v_low),
             Scalar(tail.h_high, tail.s_high, tail.v_high), tail_img);
 
-    // imshow("Head", head_img);
-    // imshow("Tail", tail_img);
-    // imshow("Yellow", yellow_img);
-    // imshow("Blue", blue_img);
-    // imshow("Brown", brown_img);
+    //imshow("Head", head_img);
+    //imshow("Tail", tail_img);
+    //imshow("Yellow", yellow_img);
+    //imshow("Blue", blue_img);
+    //imshow("Brown", brown_img);
 
     threshold(yellow_img, yellow_output, binary_thresh, 255, THRESH_BINARY);
     threshold(blue_img, blue_output, binary_thresh, 255, THRESH_BINARY);
