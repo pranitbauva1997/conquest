@@ -41,7 +41,8 @@ int arduino = -1;
 void sendCommand(const char *command);
 void init_arduino(const char *file);
 int dist(Point a, Point b);
-float angle_between(Point a, Point b, Point c, Point d);
+float angle_between_4(Point a, Point b, Point c, Point d);
+float angle_between_3(Point a, Point b, Point c);
 
 struct hsv_trackbar {
     int h_low;
@@ -146,7 +147,6 @@ int main(int argc, const char **argv) {
             get_path();
             move_bot();
         }
-        imshow("Path", path_img);
         waitKey(10);
     }
 
@@ -161,7 +161,7 @@ int dist(Point a, Point b) {
     return (int) sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2));
 }
 
-float angle_between(Point a, Point b, Point c, Point d) {
+float angle_between_4(Point a, Point b, Point c, Point d) {
     float slope1, slope2;
     slope1 = (float) (a.y - b.y) / (a.x - b.x);
     slope2 = (float) (c.y - d.y) / (c.x - d.x);
@@ -174,39 +174,70 @@ float angle_between(Point a, Point b, Point c, Point d) {
     return inter_angle;
 }
 
+float angle_between_3(Point a, Point b, Point c) {
+    float slope1, slope2;
+    slope1 = (float) (a.y - b.y) / (a.x - b.x);
+    slope2 = (float) (c.y - b.y) / (c.x - b.x);
+
+    float inter_angle = (atan(slope2) - atan(slope1)) * 180 / 3.14;
+
+    return inter_angle;
+}
+
 void move_bot() {
     status = IN_BETWEEN_PATH;
     char previous;
-    float d, angle;
+    float d, angle4, angle3;
     do {
         d = dist(current_point, end_point);
-        angle = angle_between(end_point, town_centre, head_point, tail_point);
-        printf("Angle: %f\n", angle);
-        printf("Distance: %f\n", d);
-        if (angle > 10) {
+        angle4 = angle_between_4(end_point, town_centre, head_point, tail_point);
+        angle3 = angle_between_3(current_point, town_centre, end_point);
+        //printf("Angle4: %f\n", angle4);
+        //printf("Angle3: %f\n", angle3);
+        //printf("Town Centre: (%d, %d)\n", town_centre.x, town_centre.y);
+        //printf("Current Point: (%d, %d)\n", current_point.x, current_point.y);
+        //printf("End Point: (%d, %d)\n", end_point.x, end_point.y);
+        if (angle3 < -30) {
             if (previous != 'A') {
                 previous = 'A';
-                sendCommand("A");
-                printf("A\n");
+                //sendCommand("A");
+                //printf("A\n");
             }
+            continue;
         }
-        else if (angle < -10) {
+        if (angle3 > 30) {
             if (previous != 'D') {
                 previous = 'D';
-                sendCommand("D");
-                printf("D\n");
+                //sendCommand("D");
+                //printf("D\n");
+            }
+            continue;
+        }
+        if (angle4 > 30 && (angle3 <= 30 && angle3 >= -30)) {
+            if (previous != 'A') {
+                previous = 'A';
+                //sendCommand("A");
+                //printf("A\n");
             }
         }
-        else if (angle <= 10 && angle >= -10) {
+        if (angle4 < -30 && (angle3 <= 30 && angle3 >= -30)) {
+            if (previous != 'D') {
+                previous = 'D';
+                //sendCommand("D");
+                //printf("D\n");
+            }
+        }
+        if (angle4 <= 30 && angle4 >= -30 && angle3 <= 30 && angle3 >= -30) {
             if (previous != 'W') {
                 previous = 'W';
-                sendCommand("W");
-                printf("W\n");
+                //sendCommand("W");
+                //printf("W\n");
             }
         }
         thresh_callback(0, 0);
-    } while (d > 50);
+    } while (d > 80);
     sendCommand("S");
+    //printf("S\n");
 }
 
 void sendCommand(const char *command) {
@@ -267,8 +298,7 @@ void thresh_callback(int, void *) {
     cvtColor(src, imgHSV, CV_BGR2HSV);
     imshow("Source", src);
 
-    if (status == START_POINT)
-        path_img = Mat::zeros(src.size(), CV_8UC3);
+    path_img = Mat::zeros(src.size(), CV_8UC3);
 
     inRange(imgHSV, Scalar(yellow.h_low, yellow.s_low, yellow.v_low),
             Scalar(yellow.h_high, yellow.s_high, yellow.v_high), yellow_img);
@@ -293,6 +323,7 @@ void thresh_callback(int, void *) {
     threshold(tail_img, tail_output, binary_thresh, 255, THRESH_BINARY);
     threshold(brown_img, brown_output, binary_thresh, 255, THRESH_BINARY);
 
+    return ;
     /* Find contours */
     findContours(head_output, head_contours, head_hierarchy, CV_RETR_TREE,
                  CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
@@ -401,8 +432,12 @@ void thresh_callback(int, void *) {
     current_point.x = (head_point.x + tail_point.x) / 4;
     current_point.y = (head_point.y + tail_point.y) / 4;
 
-    for (int i = -5; i < 5; i++) {
-        for (int j = -5; j < 5; j++) {
+    line(path_img, tail_point, head_point, Scalar(255, 255, 255), 2, 8);
+    get_path();
+    line(path_img, current_point, town_centre, Scalar(255, 255, 255), 2, 8);
+
+    for (int i = -2; i < 2; i++) {
+        for (int j = -2; j < 2; j++) {
             path_img.at<Vec3b>(i + current_point.y, j + current_point.x) = {255, 255, 255};
         }
     }
@@ -412,4 +447,5 @@ void thresh_callback(int, void *) {
     imshow("Yellow Contours", yellow_drawing);
     imshow("Blue Contours", blue_drawing);
     imshow("Brown Contours", brown_drawing);
+    imshow("Path img", path_img);
 }
