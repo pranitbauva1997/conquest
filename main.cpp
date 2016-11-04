@@ -6,11 +6,12 @@
 #include <fcntl.h>
 #include <termios.h>
 #include <ctime>
+#include <math.h>
 
 using namespace cv;
 using namespace std;
 
-VideoCapture cap(0);
+VideoCapture cap(1);
 
 int binary_thresh = 100;
 int initial = 0;
@@ -41,8 +42,8 @@ int arduino = -1;
 void sendCommand(const char *command);
 void init_arduino(const char *file);
 int dist(Point a, Point b);
-float angle_between_4(Point a, Point b, Point c, Point d);
-float angle_between_3(Point a, Point b, Point c);
+void find_line(Point head, Point tail, Point mid, float *m, float *c);
+float perpendicular_dist(Point p, float m, float c);
 
 struct hsv_trackbar {
     int h_low;
@@ -112,12 +113,12 @@ void init_hsvcolor() {
     head.s_high = 102;
     head.v_low = 74;
     head.v_high = 189;
-    tail.h_low = 4;
-    tail.h_high = 50;
-    tail.s_low = 8;
-    tail.s_high = 112;
-    tail.v_low = 183;
-    tail.v_high = 255;
+    tail.h_low = 16;
+    tail.h_high = 26;
+    tail.s_low = 85;
+    tail.s_high = 134;
+    tail.v_low = 158;
+    tail.v_high = 239;
     blue.h_low = 44;
     blue.h_high = 85;
     blue.s_low = 0;
@@ -138,7 +139,7 @@ int main(int argc, const char **argv) {
 
     init_arduino(argv[1]);
     init_hsvcolor();
-    // init_trackbars();
+    //init_trackbars();
 
     while(1) {
         createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
@@ -161,79 +162,26 @@ int dist(Point a, Point b) {
     return (int) sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2));
 }
 
-float angle_between_4(Point a, Point b, Point c, Point d) {
-    float slope1, slope2;
-    slope1 = (float) (a.y - b.y) / (a.x - b.x);
-    slope2 = (float) (c.y - d.y) / (c.x - d.x);
-
-    float inter_angle = (atan(slope2) - atan(slope1)) * 180 / 3.14;
-    /*
-     * If positive, then bot has to take a left. Similarly,
-     * if negative, then bot has to take a right.
-     */
-    return inter_angle;
+void find_line(Point head, Point tail, Point mid, float *m, float *c) {
+    *m = (float) (tail.y - head.y) / (tail.x - head.x);
+    *c = mid.y - (*m) * (mid.x);
 }
 
-float angle_between_3(Point a, Point b, Point c) {
-    float slope1, slope2;
-    slope1 = (float) (a.y - b.y) / (a.x - b.x);
-    slope2 = (float) (c.y - b.y) / (c.x - b.x);
-
-    float inter_angle = (atan(slope2) - atan(slope1)) * 180 / 3.14;
-
-    return inter_angle;
+float perpendicular_dist(Point p, float m, float c) {
+    float d;
+    d = (float) (p.y - (m * p.x) - c) / (sqrt(1 + m * m));
+    return d;
 }
 
 void move_bot() {
     status = IN_BETWEEN_PATH;
     char previous;
-    float d, angle4, angle3;
+    float d, m, c, pd;
     do {
         d = dist(current_point, end_point);
-        angle4 = angle_between_4(end_point, town_centre, head_point, tail_point);
-        angle3 = angle_between_3(current_point, town_centre, end_point);
-        //printf("Angle4: %f\n", angle4);
-        //printf("Angle3: %f\n", angle3);
-        //printf("Town Centre: (%d, %d)\n", town_centre.x, town_centre.y);
-        //printf("Current Point: (%d, %d)\n", current_point.x, current_point.y);
-        //printf("End Point: (%d, %d)\n", end_point.x, end_point.y);
-        if (angle3 < -30) {
-            if (previous != 'A') {
-                previous = 'A';
-                //sendCommand("A");
-                //printf("A\n");
-            }
-            continue;
-        }
-        if (angle3 > 30) {
-            if (previous != 'D') {
-                previous = 'D';
-                //sendCommand("D");
-                //printf("D\n");
-            }
-            continue;
-        }
-        if (angle4 > 30 && (angle3 <= 30 && angle3 >= -30)) {
-            if (previous != 'A') {
-                previous = 'A';
-                //sendCommand("A");
-                //printf("A\n");
-            }
-        }
-        if (angle4 < -30 && (angle3 <= 30 && angle3 >= -30)) {
-            if (previous != 'D') {
-                previous = 'D';
-                //sendCommand("D");
-                //printf("D\n");
-            }
-        }
-        if (angle4 <= 30 && angle4 >= -30 && angle3 <= 30 && angle3 >= -30) {
-            if (previous != 'W') {
-                previous = 'W';
-                //sendCommand("W");
-                //printf("W\n");
-            }
-        }
+        find_line(head_point, tail_point, current_point, &m, &c);
+        pd = perpendicular_dist(end_point, m, c);
+        printf("m: %f\t c: %f\t pd: %f\n", m, c, pd);
         thresh_callback(0, 0);
     } while (d > 80);
     sendCommand("S");
@@ -252,24 +200,6 @@ void init_arduino(const char *file) {
         exit(255);
     }
 }
-
-/*
-void check_status() {
-    if (distance_(&bot_position, &current_target) < 20) {
-        status = BLINK_LED;
-        blink_led();
-    }
-}*/
-
-/*
-void continue_moving() {
-    int x = current_target.x - bot_position.x;
-    int y = current_target.y - bot_position.y;
-    if (x > 0 && y > 0)
-        go_left();
-    if (x > 0 && y < 0)
-        go_right();
-}*/
 
 void thresh_callback(int, void *) {
 
@@ -323,7 +253,6 @@ void thresh_callback(int, void *) {
     threshold(tail_img, tail_output, binary_thresh, 255, THRESH_BINARY);
     threshold(brown_img, brown_output, binary_thresh, 255, THRESH_BINARY);
 
-    return ;
     /* Find contours */
     findContours(head_output, head_contours, head_hierarchy, CV_RETR_TREE,
                  CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
@@ -442,10 +371,10 @@ void thresh_callback(int, void *) {
         }
     }
 
-    imshow("Head Contours", head_drawing);
-    imshow("Tail Contours", tail_drawing);
-    imshow("Yellow Contours", yellow_drawing);
-    imshow("Blue Contours", blue_drawing);
-    imshow("Brown Contours", brown_drawing);
-    imshow("Path img", path_img);
+    ////imshow("Head Contours", head_drawing);
+    //imshow("Tail Contours", tail_drawing);
+    //imshow("Yellow Contours", yellow_drawing);
+    //imshow("Blue Contours", blue_drawing);
+    //imshow("Brown Contours", brown_drawing);
+    //imshow("Path img", path_img);
 }
