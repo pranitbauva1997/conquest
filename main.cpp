@@ -41,9 +41,6 @@ RNG rng(12345);
 int arduino = -1;
 void sendCommand(const char *command);
 void init_arduino(const char *file);
-int dist(Point a, Point b);
-void find_line(Point head, Point tail, Point mid, float *m, float *c);
-float perpendicular_dist(Point p, float m, float c);
 
 struct hsv_trackbar {
     int h_low;
@@ -97,28 +94,28 @@ void init_trackbars() {
 void init_hsvcolor() {
     yellow.h_low = 16;
     yellow.h_high = 34;
-    yellow.s_low = 188;
+    yellow.s_low = 98;
     yellow.s_high = 255;
-    yellow.v_low = 233;
+    yellow.v_low = 0;
     yellow.v_high = 255;
-    brown.h_low = 7;
-    brown.h_high = 17;
-    brown.s_low = 102;
-    brown.s_high = 153;
-    brown.v_low = 87;
-    brown.v_high = 255;
-    head.h_low = 117;
-    head.h_high = 140;
-    head.s_low = 41;
-    head.s_high = 102;
-    head.v_low = 74;
-    head.v_high = 189;
-    tail.h_low = 16;
-    tail.h_high = 26;
-    tail.s_low = 85;
-    tail.s_high = 134;
-    tail.v_low = 158;
-    tail.v_high = 239;
+    brown.h_low = 4;
+    brown.h_high = 26;
+    brown.s_low = 55;
+    brown.s_high = 117;
+    brown.v_low = 175;
+    brown.v_high = 228;
+    head.h_low = 110;
+    head.h_high = 131;
+    head.s_low = 33;
+    head.s_high = 74;
+    head.v_low = 162;
+    head.v_high = 229;
+    tail.h_low = 18;
+    tail.h_high = 56;
+    tail.s_low = 0;
+    tail.s_high = 32;
+    tail.v_low = 232;
+    tail.v_high = 255;
     blue.h_low = 44;
     blue.h_high = 85;
     blue.s_low = 0;
@@ -145,7 +142,6 @@ int main(int argc, const char **argv) {
         createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
         thresh_callback(0, 0);
         if (status == START_POINT) {
-            get_path();
             move_bot();
         }
         waitKey(10);
@@ -158,34 +154,69 @@ void get_path() {
     line(path_img, town_centre, end_point, Scalar(255, 255, 255), 2, 8);
 }
 
-int dist(Point a, Point b) {
-    return (int) sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2));
+double dist(Point a, Point b) {
+    return (double) sqrt(pow(b.x - a.x, 2) + pow(b.y - a.y, 2));
 }
 
-void find_line(Point head, Point tail, Point mid, float *m, float *c) {
-    *m = (float) (tail.y - head.y) / (tail.x - head.x);
-    *c = mid.y - (*m) * (mid.x);
+double angle_between(Point a, Point b, Point c) {
+    double slope1 = (double) (a.y - b.y) / (a.x - b.x);
+    double slope2 = (double) (c.y - b.y) / (c.x - b.x);
+
+    double inter_angle = (double) (atan((slope1 - slope2) / (1 + (slope1 * slope2)))) * 180 / 3.14;
+
+    return inter_angle;
 }
 
-float perpendicular_dist(Point p, float m, float c) {
-    float d;
-    d = (float) (p.y - (m * p.x) - c) / (sqrt(1 + m * m));
-    return d;
+void blink_led() {
+    ;
+}
+
+void take_reverse_turn() {
+    float new_angle;
+    sendCommand("R");
+    sleep(3);
 }
 
 void move_bot() {
     status = IN_BETWEEN_PATH;
     char previous;
-    float d, m, c, pd;
+    double d, d1, d2, angle;
     do {
-        d = dist(current_point, end_point);
-        find_line(head_point, tail_point, current_point, &m, &c);
-        pd = perpendicular_dist(end_point, m, c);
-        printf("m: %f\t c: %f\t pd: %f\n", m, c, pd);
+        d1 = dist(head_point, end_point);
+        d2 = dist(tail_point, end_point);
+        d = d1 >= d2 ? d1 : d2;
+        angle = angle_between(head_point, end_point, tail_point);
+        printf("Angle: %f\n", angle);
+
+        if (angle <= 10 && angle >= -10) {
+            if (previous != 'W') {
+                previous = 'W';
+                sendCommand("W");
+                printf("W\n");
+            }
+        }
+        if (angle < -10) {
+            if (previous != 'A') {
+                previous = 'A';
+                sendCommand("A");
+                printf("A\n");
+            }
+        }
+        if (angle > 10) {
+            if (previous != 'D') {
+                previous = 'D';
+                sendCommand("D");
+                printf("D\n");
+            }
+        }
         thresh_callback(0, 0);
-    } while (d > 80);
+    } while (d > 60);
     sendCommand("S");
-    //printf("S\n");
+    printf("S\n");
+
+    blink_led();
+
+    take_reverse_turn();
 }
 
 void sendCommand(const char *command) {
@@ -319,14 +350,16 @@ void thresh_callback(int, void *) {
         tail_point = (tailBoundRect[i].tl() + tailBoundRect[i].br());
         break;
     }
-    for (int i = 0; i < yellow_contours_poly.size(); i++) {
-        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-        rectangle(yellow_drawing, yellowBoundRect[i].tl(), yellowBoundRect[i].br(), color, 2, 8, 0);
-        Point centre_rect = (yellowBoundRect[i].tl() + yellowBoundRect[i].br());
-        centre_rect.x /= 2;
-        centre_rect.y /= 2;
-        if (!initial)
-            target_resources.push_back(centre_rect);
+    if (!initial) {
+        for (int i = 0; i < yellow_contours_poly.size(); i++) {
+            Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+            rectangle(yellow_drawing, yellowBoundRect[i].tl(), yellowBoundRect[i].br(), color, 2, 8, 0);
+            Point centre_rect = (yellowBoundRect[i].tl() + yellowBoundRect[i].br());
+            centre_rect.x /= 2;
+            centre_rect.y /= 2;
+            if (!initial)
+                target_resources.push_back(centre_rect);
+        }
     }
     for (int i = 0; i < blue_contours_poly.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
@@ -358,10 +391,13 @@ void thresh_callback(int, void *) {
     initial++;
 
     // Update the bot values
-    current_point.x = (head_point.x + tail_point.x) / 4;
-    current_point.y = (head_point.y + tail_point.y) / 4;
+    head_point.x /= 2;
+    head_point.y /= 2;
+    tail_point.x /= 2;
+    tail_point.y /= 2;
+    current_point.x = (head_point.x + tail_point.x) / 2;
+    current_point.y = (head_point.y + tail_point.y) / 2;
 
-    line(path_img, tail_point, head_point, Scalar(255, 255, 255), 2, 8);
     get_path();
     line(path_img, current_point, town_centre, Scalar(255, 255, 255), 2, 8);
 
@@ -371,7 +407,7 @@ void thresh_callback(int, void *) {
         }
     }
 
-    ////imshow("Head Contours", head_drawing);
+    //imshow("Head Contours", head_drawing);
     //imshow("Tail Contours", tail_drawing);
     //imshow("Yellow Contours", yellow_drawing);
     //imshow("Blue Contours", blue_drawing);
