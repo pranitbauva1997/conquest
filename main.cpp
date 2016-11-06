@@ -15,6 +15,7 @@ VideoCapture cap(1);
 
 int binary_thresh = 100;
 int initial = 0;
+int debug = 0;
 
 /* Path planning variables */
 
@@ -261,46 +262,57 @@ void thresh_callback(int, void *) {
 
     path_img = Mat::zeros(src.size(), CV_8UC3);
 
-    inRange(imgHSV, Scalar(yellow.h_low, yellow.s_low, yellow.v_low),
-            Scalar(yellow.h_high, yellow.s_high, yellow.v_high), yellow_img);
-    inRange(imgHSV, Scalar(blue.h_low, blue.s_low, blue.v_low),
-            Scalar(blue.h_high, blue.s_high, blue.v_high), blue_img);
-    inRange(imgHSV, Scalar(brown.h_low, brown.s_low, brown.v_low),
-            Scalar(brown.h_high, brown.s_high, brown.v_high), brown_img);
+    if (!initial || debug) {
+        inRange(imgHSV, Scalar(yellow.h_low, yellow.s_low, yellow.v_low),
+                Scalar(yellow.h_high, yellow.s_high, yellow.v_high), yellow_img);
+        inRange(imgHSV, Scalar(blue.h_low, blue.s_low, blue.v_low),
+                Scalar(blue.h_high, blue.s_high, blue.v_high), blue_img);
+        inRange(imgHSV, Scalar(brown.h_low, brown.s_low, brown.v_low),
+                Scalar(brown.h_high, brown.s_high, brown.v_high), brown_img);
+    }
     inRange(imgHSV, Scalar(head.h_low, head.s_low, head.v_low),
             Scalar(head.h_high, head.s_high, head.v_high), head_img);
     inRange(imgHSV, Scalar(tail.h_low, tail.s_low, tail.v_low),
             Scalar(tail.h_high, tail.s_high, tail.v_high), tail_img);
 
-    //imshow("Head", head_img);
-    //imshow("Tail", tail_img);
-    //imshow("Yellow", yellow_img);
-    //imshow("Blue", blue_img);
-    //imshow("Brown", brown_img);
+    if (debug) {
+        imshow("Head", head_img);
+        imshow("Tail", tail_img);
+        imshow("Yellow", yellow_img);
+        imshow("Blue", blue_img);
+        imshow("Brown", brown_img);
+    }
 
-    threshold(yellow_img, yellow_output, binary_thresh, 255, THRESH_BINARY);
-    threshold(blue_img, blue_output, binary_thresh, 255, THRESH_BINARY);
+    if (!initial || debug) {
+        threshold(yellow_img, yellow_output, binary_thresh, 255, THRESH_BINARY);
+        threshold(blue_img, blue_output, binary_thresh, 255, THRESH_BINARY);
+        threshold(brown_img, brown_output, binary_thresh, 255, THRESH_BINARY);
+    }
     threshold(head_img, head_output, binary_thresh, 255, THRESH_BINARY);
     threshold(tail_img, tail_output, binary_thresh, 255, THRESH_BINARY);
-    threshold(brown_img, brown_output, binary_thresh, 255, THRESH_BINARY);
 
     /* Find contours */
     findContours(head_output, head_contours, head_hierarchy, CV_RETR_TREE,
                  CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
     findContours(tail_output, tail_contours, tail_hierarchy, CV_RETR_TREE,
                  CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-    findContours(yellow_output, yellow_contours, yellow_hierarchy,
-                 CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-    findContours(brown_output, brown_contours, brown_hierarchy,
-                 CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
-    findContours(blue_output, blue_contours, blue_hierarchy,
-                 CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+    if (!initial || debug) {
+        findContours(yellow_output, yellow_contours, yellow_hierarchy,
+                     CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+        findContours(brown_output, brown_contours, brown_hierarchy,
+                     CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+        findContours(blue_output, blue_contours, blue_hierarchy,
+                     CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
+    }
 
     head_contours_poly.resize(head_contours.size());
     tail_contours_poly.resize(tail_contours.size());
-    yellow_contours_poly.resize(yellow_contours.size());
-    blue_contours_poly.resize(blue_contours.size());
-    brown_contours_poly.resize(brown_contours.size());
+
+    if (!initial || debug) {
+        yellow_contours_poly.resize(yellow_contours.size());
+        blue_contours_poly.resize(blue_contours.size());
+        brown_contours_poly.resize(brown_contours.size());
+    }
 
     for (int i = 0; i < head_contours.size(); i++) {
         approxPolyDP(Mat(head_contours[i]), head_contours_poly[i], 3, true);
@@ -314,29 +326,34 @@ void thresh_callback(int, void *) {
             tailBoundRect.push_back(boundingRect(Mat(tail_contours_poly[i])));
     }
 
-    for (int i = 0; i < yellow_contours.size(); i++) {
-        approxPolyDP(Mat(yellow_contours[i]), yellow_contours_poly[i], 3, true);
-        if (contourArea(yellow_contours[i]) > 100)
-            yellowBoundRect.push_back(boundingRect(Mat(yellow_contours_poly[i])));
-    }
+    if (!initial || debug) {
+        for (int i = 0; i < yellow_contours.size(); i++) {
+            approxPolyDP(Mat(yellow_contours[i]), yellow_contours_poly[i], 3, true);
+            if (contourArea(yellow_contours[i]) > 100)
+                yellowBoundRect.push_back(boundingRect(Mat(yellow_contours_poly[i])));
+        }
 
-    for (int i = 0; i < blue_contours.size(); i++) {
-        approxPolyDP(Mat(blue_contours[i]), blue_contours_poly[i], 3, true);
-        if (contourArea(blue_contours[i]) > 100)
-            blueBoundRect.push_back(boundingRect(Mat(blue_contours_poly[i])));
-    }
+        for (int i = 0; i < blue_contours.size(); i++) {
+            approxPolyDP(Mat(blue_contours[i]), blue_contours_poly[i], 3, true);
+            if (contourArea(blue_contours[i]) > 100)
+                blueBoundRect.push_back(boundingRect(Mat(blue_contours_poly[i])));
+        }
 
-    for (int i = 0; i < brown_contours.size(); i++) {
-        approxPolyDP(Mat(brown_contours[i]), brown_contours_poly[i], 3, true);
-        if (contourArea(brown_contours[i]) > 100)
-            brownBoundRect.push_back(boundingRect(Mat(brown_contours_poly[i])));
+        for (int i = 0; i < brown_contours.size(); i++) {
+            approxPolyDP(Mat(brown_contours[i]), brown_contours_poly[i], 3, true);
+            if (contourArea(brown_contours[i]) > 100)
+                brownBoundRect.push_back(boundingRect(Mat(brown_contours_poly[i])));
+        }
     }
 
     head_drawing = Mat::zeros(src.size(), CV_8UC3);
     tail_drawing = Mat::zeros(src.size(), CV_8UC3);
-    blue_drawing = Mat::zeros(src.size(), CV_8UC3);
-    brown_drawing = Mat::zeros(src.size(), CV_8UC3);
-    yellow_drawing = Mat::zeros(src.size(), CV_8UC3);
+
+    if (!initial || debug) {
+        blue_drawing = Mat::zeros(src.size(), CV_8UC3);
+        brown_drawing = Mat::zeros(src.size(), CV_8UC3);
+        yellow_drawing = Mat::zeros(src.size(), CV_8UC3);
+    }
 
     for (int i = 0; i < head_contours_poly.size(); i++) {
         Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
@@ -350,30 +367,35 @@ void thresh_callback(int, void *) {
         tail_point = (tailBoundRect[i].tl() + tailBoundRect[i].br());
         break;
     }
-    if (!initial) {
+    if (!initial || debug) {
         for (int i = 0; i < yellow_contours_poly.size(); i++) {
             Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
             rectangle(yellow_drawing, yellowBoundRect[i].tl(), yellowBoundRect[i].br(), color, 2, 8, 0);
             Point centre_rect = (yellowBoundRect[i].tl() + yellowBoundRect[i].br());
             centre_rect.x /= 2;
             centre_rect.y /= 2;
-            if (!initial)
-                target_resources.push_back(centre_rect);
+            target_resources.push_back(centre_rect);
         }
-    }
-    for (int i = 0; i < blue_contours_poly.size(); i++) {
-        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-        rectangle(blue_drawing, blueBoundRect[i].tl(), blueBoundRect[i].br(), color, 2, 8, 0);
-    }
-    for (int i = 0; i < brown_contours_poly.size(); i++) {
-        Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-        rectangle(brown_drawing, brownBoundRect[i].tl(), brownBoundRect[i].br(), color, 2, 8, 0);
-        Point centre_rect = (brownBoundRect[i].tl() + brownBoundRect[i].br());
-        centre_rect.x /= 2;
-        centre_rect.y /= 2;
-        if (centre_rect.x != 0 && centre_rect.y != 0) {
-            town_centre = centre_rect;
-            break;
+
+        for (int i = 0; i < blue_contours_poly.size(); i++) {
+            Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+            rectangle(blue_drawing, blueBoundRect[i].tl(), blueBoundRect[i].br(), color, 2, 8, 0);
+            Point centre_rect = (blueBoundRect[i].tl() + blueBoundRect[i].br());
+            centre_rect.x /= 2;
+            centre_rect.y /= 2;
+            target_resources.push_back(centre_rect);
+        }
+
+        for (int i = 0; i < brown_contours_poly.size(); i++) {
+            Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+            rectangle(brown_drawing, brownBoundRect[i].tl(), brownBoundRect[i].br(), color, 2, 8, 0);
+            Point centre_rect = (brownBoundRect[i].tl() + brownBoundRect[i].br());
+            centre_rect.x /= 2;
+            centre_rect.y /= 2;
+            if (centre_rect.x != 0 && centre_rect.y != 0) {
+                town_centre = centre_rect;
+                break;
+            }
         }
     }
     end_point = target_resources[1];
@@ -407,10 +429,12 @@ void thresh_callback(int, void *) {
         }
     }
 
-    //imshow("Head Contours", head_drawing);
-    //imshow("Tail Contours", tail_drawing);
-    //imshow("Yellow Contours", yellow_drawing);
-    //imshow("Blue Contours", blue_drawing);
-    //imshow("Brown Contours", brown_drawing);
-    //imshow("Path img", path_img);
+    if (debug) {
+        imshow("Head Contours", head_drawing);
+        imshow("Tail Contours", tail_drawing);
+        imshow("Yellow Contours", yellow_drawing);
+        imshow("Blue Contours", blue_drawing);
+        imshow("Brown Contours", brown_drawing);
+        imshow("Path img", path_img);
+    }
 }
