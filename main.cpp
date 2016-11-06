@@ -16,6 +16,7 @@ VideoCapture cap(0);
 int binary_thresh = 100;
 int initial = 0;
 int debug = 0;
+int front = 1;
 
 /* Path planning variables */
 
@@ -178,32 +179,31 @@ void blink_led(int seconds) {
     }
 }
 
-void take_reverse_turn(char c, int sec) {
-    float new_angle;
-    char *command = new char[2];
-    *command = 'R';
-    *(command + 1) = '\0';
-    sendCommand(command);
-    sleep(sec);
-}
-
 void move_bot() {
     if (status == START_POINT){
         status = IN_BETWEEN_PATH;
     }
 
     if (status == BLINK_LED) {
+        printf("Blinking LED\n");
         blink_led(1);
-        status = END_POINT;
+        printf("now status = REVERSE_MOVE\n");
+        status = REVERSE_MOVE;
+        move_bot();
     }
 
     if (status == REVERSE_MOVE) {
-        take_reverse_turn('R', 2);
-        end_point = town_centre;
+        printf("Taking Reverse\n");
+        sendCommand("V");
+        sleep(3);
+        printf("Finished reverse turn\n");
         status = IN_BETWEEN_PATH;
+        end_point = town_centre;
+        move_bot();
     }
 
     if (status == IN_BETWEEN_PATH) {
+        printf("status = IN_BETWEEN_PATH\n");
         char previous;
         double d, d1, d2, angle;
         do {
@@ -211,8 +211,11 @@ void move_bot() {
             d2 = dist(tail_point, end_point);
             d = d1 >= d2 ? d1 : d2;
             angle = angle_between(head_point, end_point, tail_point);
-            printf("Angle: %f\n", angle);
-
+            //printf("Head Point: (%d, %d)\n", head_point.x, head_point.y);
+            //printf("Tail Point: (%d, %d)\n", tail_point.x, tail_point.y);
+            //printf("End Point: (%d, %d)\n", end_point.x, end_point.y);
+            //printf("Angle: %f\n", angle);
+            //printf("Distance: %f\n", d);
             if (angle <= 10 && angle >= -10) {
                 if (previous != 'W') {
                     previous = 'W';
@@ -220,25 +223,41 @@ void move_bot() {
                     printf("W\n");
                 }
             }
-            if (angle < -10) {
-                if (previous != 'A') {
-                    previous = 'A';
-                    sendCommand("A");
-                    printf("A\n");
+            if (front) {
+                if (angle < -10) {
+                    if (previous != 'A') {
+                        previous = 'A';
+                        sendCommand("A");
+                        printf("A\n");
+                    }
+                } else if (angle > 10) {
+                    if (previous != 'D') {
+                        previous = 'D';
+                        sendCommand("D");
+                        printf("D\n");
+                    }
                 }
-            }
-            if (angle > 10) {
-                if (previous != 'D') {
-                    previous = 'D';
-                    sendCommand("D");
-                    printf("D\n");
+            } else {
+                if (angle < -10) {
+                    if (previous != 'D') {
+                        previous = 'A';
+                        sendCommand("A");
+                        printf("A\n");
+                    }
+                } else if (angle > 10) {
+                    if (previous != 'A') {
+                        sendCommand("D");
+                        printf("D");
+                    }
                 }
             }
             thresh_callback(0, 0);
         } while (d > 60);
         sendCommand("S");
         printf("S\n");
+        printf("status = BLINK_LED\n");
         status = BLINK_LED;
+        move_bot();
     }
 }
 
@@ -423,7 +442,8 @@ void thresh_callback(int, void *) {
             }
         }
     }
-    end_point = target_resources[1];
+    if (!initial)
+        end_point = target_resources[1];
     for (int i = -5; i < 5; i++) {
         for (int j = -5; j < 5; j++) {
             path_img.at<Vec3b>(i + town_centre.y, j + town_centre.x) = {255, 255, 255};
