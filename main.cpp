@@ -455,7 +455,9 @@ void thresh_callback(int, void *) {
             path_img.at<Vec3b>(i + end_point.y, j + end_point.x) = {255, 255, 255};
         }
     }
-    initial++;
+
+    if (!initial)
+        initial++;
 
     // Update the bot values
     head_point.x /= 2;
