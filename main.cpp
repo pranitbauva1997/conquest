@@ -11,7 +11,7 @@
 using namespace cv;
 using namespace std;
 
-VideoCapture cap(1);
+VideoCapture cap(0);
 
 int binary_thresh = 100;
 int initial = 0;
@@ -23,7 +23,8 @@ enum state {
     START_POINT = 1,
     IN_BETWEEN_PATH,
     END_POINT,
-    BLINK_LED
+    BLINK_LED,
+    REVERSE_MOVE
 } status = START_POINT;
 
 vector<Point> target_resources;
@@ -137,14 +138,16 @@ int main(int argc, const char **argv) {
 
     init_arduino(argv[1]);
     init_hsvcolor();
-    //init_trackbars();
+
+    if (debug)
+        init_trackbars();
+
 
     while(1) {
         createTrackbar("Threshold: ", "Source", &binary_thresh, 255, thresh_callback);
         thresh_callback(0, 0);
-        if (status == START_POINT) {
+        if (!debug)
             move_bot();
-        }
         waitKey(10);
     }
 
@@ -168,56 +171,75 @@ double angle_between(Point a, Point b, Point c) {
     return inter_angle;
 }
 
-void blink_led() {
-    ;
+void blink_led(int seconds) {
+    int i;
+    for (i = 0; i < seconds; i++) {
+        sendCommand("B");
+    }
 }
 
-void take_reverse_turn() {
+void take_reverse_turn(char c, int sec) {
     float new_angle;
-    sendCommand("R");
-    sleep(3);
+    char *command = new char[2];
+    *command = 'R';
+    *(command + 1) = '\0';
+    sendCommand(command);
+    sleep(sec);
 }
 
 void move_bot() {
-    status = IN_BETWEEN_PATH;
-    char previous;
-    double d, d1, d2, angle;
-    do {
-        d1 = dist(head_point, end_point);
-        d2 = dist(tail_point, end_point);
-        d = d1 >= d2 ? d1 : d2;
-        angle = angle_between(head_point, end_point, tail_point);
-        printf("Angle: %f\n", angle);
+    if (status == START_POINT){
+        status = IN_BETWEEN_PATH;
+    }
 
-        if (angle <= 10 && angle >= -10) {
-            if (previous != 'W') {
-                previous = 'W';
-                sendCommand("W");
-                printf("W\n");
-            }
-        }
-        if (angle < -10) {
-            if (previous != 'A') {
-                previous = 'A';
-                sendCommand("A");
-                printf("A\n");
-            }
-        }
-        if (angle > 10) {
-            if (previous != 'D') {
-                previous = 'D';
-                sendCommand("D");
-                printf("D\n");
-            }
-        }
-        thresh_callback(0, 0);
-    } while (d > 60);
-    sendCommand("S");
-    printf("S\n");
+    if (status == BLINK_LED) {
+        blink_led(1);
+        status = END_POINT;
+    }
 
-    blink_led();
+    if (status == REVERSE_MOVE) {
+        take_reverse_turn('R', 2);
+        end_point = town_centre;
+        status = IN_BETWEEN_PATH;
+    }
 
-    take_reverse_turn();
+    if (status == IN_BETWEEN_PATH) {
+        char previous;
+        double d, d1, d2, angle;
+        do {
+            d1 = dist(head_point, end_point);
+            d2 = dist(tail_point, end_point);
+            d = d1 >= d2 ? d1 : d2;
+            angle = angle_between(head_point, end_point, tail_point);
+            printf("Angle: %f\n", angle);
+
+            if (angle <= 10 && angle >= -10) {
+                if (previous != 'W') {
+                    previous = 'W';
+                    sendCommand("W");
+                    printf("W\n");
+                }
+            }
+            if (angle < -10) {
+                if (previous != 'A') {
+                    previous = 'A';
+                    sendCommand("A");
+                    printf("A\n");
+                }
+            }
+            if (angle > 10) {
+                if (previous != 'D') {
+                    previous = 'D';
+                    sendCommand("D");
+                    printf("D\n");
+                }
+            }
+            thresh_callback(0, 0);
+        } while (d > 60);
+        sendCommand("S");
+        printf("S\n");
+        status = BLINK_LED;
+    }
 }
 
 void sendCommand(const char *command) {
@@ -304,6 +326,9 @@ void thresh_callback(int, void *) {
         findContours(blue_output, blue_contours, blue_hierarchy,
                      CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0));
     }
+
+    if (debug)
+        return ;
 
     head_contours_poly.resize(head_contours.size());
     tail_contours_poly.resize(tail_contours.size());
