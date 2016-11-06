@@ -4,6 +4,7 @@
 #define R_MOTOR_POSITIVE 6
 #define R_MOTOR_NEGATIVE 11
 #define R_MOTOR_ENABLE 5
+#define LED_PIN 0
 #define MAX_SPEED_R 240
 #define MAX_SPEED_L 180
 
@@ -106,6 +107,10 @@ void loop() {
       analogWrite(L_MOTOR_ENABLE, MAX_SPEED_L);
       analogWrite(R_MOTOR_ENABLE, MAX_SPEED_R);
     }
+    else if (incomingByte == 'B') {
+      //digitalWrite(LED_PIN, HIGH);
+      delay(1000);
+      //digitalWrite(LED_PIN, LOW);
+    }
   }
 }
-
