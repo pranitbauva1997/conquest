@@ -12,11 +12,14 @@ using namespace cv;
 using namespace std;
 
 VideoCapture cap(0);
+Size frameSize(static_cast<int>(640), static_cast<int>(480));
+VideoWriter writer("/home/pungi-man/conquest.avi", CV_FOURCC('P', 'I', 'M', '1'), 20, frameSize, true);
 
 int binary_thresh = 100;
 int initial = 0;
-int debug = 0;
+int debug = 1;
 int front = 1;
+int resource = 0;
 
 /* Path planning variables */
 
@@ -25,7 +28,8 @@ enum state {
     IN_BETWEEN_PATH,
     END_POINT,
     BLINK_LED,
-    REVERSE_MOVE
+    REVERSE_MOVE,
+    END_POINT_TC
 } status = START_POINT;
 
 vector<Point> target_resources;
@@ -180,6 +184,7 @@ void blink_led(int seconds) {
 }
 
 void move_bot() {
+    printf("End Point: (%d, %d)\n", end_point.x, end_point.y);
     if (status == START_POINT){
         status = IN_BETWEEN_PATH;
     }
@@ -193,12 +198,21 @@ void move_bot() {
     }
 
     if (status == REVERSE_MOVE) {
-        printf("Taking Reverse\n");
-        sendCommand("V");
-        sleep(3);
-        printf("Finished reverse turn\n");
         status = IN_BETWEEN_PATH;
-        end_point = town_centre;
+        if (end_point.x == town_centre.x && end_point.y == town_centre.y) {
+            printf("Taking Reverse\n");
+            sendCommand("V");
+            printf("Finished reverse turn\n");
+            sleep(3);
+            end_point = target_resources[++resource];
+        }
+        else {
+            printf("Taking Reverse\n");
+            sendCommand("V");
+            sleep(3);
+            printf("Finished reverse turn\n");
+            end_point = town_centre;
+        }
         move_bot();
     }
 
@@ -298,6 +312,7 @@ void thresh_callback(int, void *) {
     vector<Rect> redBoundRect;
 
     cap >> src;
+    writer.write(src);
     cvtColor(src, imgHSV, CV_BGR2HSV);
     imshow("Source", src);
 
@@ -347,7 +362,7 @@ void thresh_callback(int, void *) {
     }
 
     if (debug)
-        return ;
+        //return ;
 
     head_contours_poly.resize(head_contours.size());
     tail_contours_poly.resize(tail_contours.size());
@@ -443,7 +458,7 @@ void thresh_callback(int, void *) {
         }
     }
     if (!initial)
-        end_point = target_resources[1];
+        end_point = target_resources[0];
     for (int i = -5; i < 5; i++) {
         for (int j = -5; j < 5; j++) {
             path_img.at<Vec3b>(i + town_centre.y, j + town_centre.x) = {255, 255, 255};
