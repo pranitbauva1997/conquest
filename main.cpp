@@ -12,12 +12,10 @@ using namespace cv;
 using namespace std;
 
 VideoCapture cap(0);
-Size frameSize(static_cast<int>(640), static_cast<int>(480));
-VideoWriter writer("/home/pungi-man/conquest.avi", CV_FOURCC('P', 'I', 'M', '1'), 20, frameSize, true);
 
 int binary_thresh = 100;
 int initial = 0;
-int debug = 1;
+int debug = 0;
 int front = 1;
 int resource = 0;
 
@@ -99,19 +97,19 @@ void init_trackbars() {
 }
 
 void init_hsvcolor() {
-    yellow.h_low = 16;
-    yellow.h_high = 34;
-    yellow.s_low = 98;
+    yellow.h_low = 26;
+    yellow.h_high = 41;
+    yellow.s_low = 78;
     yellow.s_high = 255;
     yellow.v_low = 0;
     yellow.v_high = 255;
     brown.h_low = 4;
-    brown.h_high = 26;
-    brown.s_low = 55;
-    brown.s_high = 117;
-    brown.v_low = 175;
-    brown.v_high = 228;
-    head.h_low = 110;
+    brown.h_high = 22;
+    brown.s_low = 77;
+    brown.s_high = 111;
+    brown.v_low = 195;
+    brown.v_high = 255;
+    head.h_low = 117;
     head.h_high = 131;
     head.s_low = 33;
     head.s_high = 74;
@@ -123,7 +121,7 @@ void init_hsvcolor() {
     tail.s_high = 32;
     tail.v_low = 232;
     tail.v_high = 255;
-    blue.h_low = 44;
+    blue.h_low = 55;
     blue.h_high = 85;
     blue.s_low = 0;
     blue.s_high = 18;
@@ -225,11 +223,11 @@ void move_bot() {
             d2 = dist(tail_point, end_point);
             d = d1 >= d2 ? d1 : d2;
             angle = angle_between(head_point, end_point, tail_point);
-            //printf("Head Point: (%d, %d)\n", head_point.x, head_point.y);
-            //printf("Tail Point: (%d, %d)\n", tail_point.x, tail_point.y);
-            //printf("End Point: (%d, %d)\n", end_point.x, end_point.y);
-            //printf("Angle: %f\n", angle);
-            //printf("Distance: %f\n", d);
+            printf("Head Point: (%d, %d)\n", head_point.x, head_point.y);
+            printf("Tail Point: (%d, %d)\n", tail_point.x, tail_point.y);
+            printf("End Point: (%d, %d)\n", end_point.x, end_point.y);
+            printf("Angle: %f\n", angle);
+            printf("Distance: %f\n", d);
             if (angle <= 10 && angle >= -10) {
                 if (previous != 'W') {
                     previous = 'W';
@@ -312,7 +310,6 @@ void thresh_callback(int, void *) {
     vector<Rect> redBoundRect;
 
     cap >> src;
-    writer.write(src);
     cvtColor(src, imgHSV, CV_BGR2HSV);
     imshow("Source", src);
 
@@ -362,7 +359,7 @@ void thresh_callback(int, void *) {
     }
 
     if (debug)
-        //return ;
+        return ;
 
     head_contours_poly.resize(head_contours.size());
     tail_contours_poly.resize(tail_contours.size());
@@ -375,13 +372,13 @@ void thresh_callback(int, void *) {
 
     for (int i = 0; i < head_contours.size(); i++) {
         approxPolyDP(Mat(head_contours[i]), head_contours_poly[i], 3, true);
-        if (contourArea(head_contours[i]) > 100)
+        if (contourArea(head_contours[i]) > 500)
             headBoundRect.push_back(boundingRect(Mat(head_contours_poly[i])));
     }
 
     for (int i = 0; i < tail_contours.size(); i++) {
         approxPolyDP(Mat(tail_contours[i]), tail_contours_poly[i], 3, true);
-        if (contourArea(tail_contours[i]) > 100)
+        if (contourArea(tail_contours[i]) > 1000)
             tailBoundRect.push_back(boundingRect(Mat(tail_contours_poly[i])));
     }
 

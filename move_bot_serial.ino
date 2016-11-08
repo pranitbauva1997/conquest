@@ -4,7 +4,7 @@
 #define R_MOTOR_POSITIVE 6
 #define R_MOTOR_NEGATIVE 11
 #define R_MOTOR_ENABLE 5
-#define LED_PIN 0
+#define LED_PIN 13
 #define MAX_SPEED_R 240
 #define MAX_SPEED_L 180
 
@@ -26,6 +26,7 @@ void setup() {
   pinMode(11, OUTPUT);
   pinMode(6, OUTPUT);
   pinMode(5, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
   Serial.begin(9600);
 }
 
@@ -107,10 +108,31 @@ void loop() {
       analogWrite(L_MOTOR_ENABLE, MAX_SPEED_L);
       analogWrite(R_MOTOR_ENABLE, MAX_SPEED_R);
     }
+    else if (incomingByte == 'V') {
+      digitalWrite(R_MOTOR_POSITIVE, LOW);
+      digitalWrite(R_MOTOR_NEGATIVE, HIGH);
+
+      digitalWrite(L_MOTOR_POSITIVE, HIGH);
+      digitalWrite(L_MOTOR_NEGATIVE, LOW);
+
+      analogWrite(L_MOTOR_ENABLE, MAX_SPEED_L);
+      analogWrite(R_MOTOR_ENABLE, MAX_SPEED_R);
+
+      delay(4000);
+
+      digitalWrite(R_MOTOR_POSITIVE, LOW);
+      digitalWrite(R_MOTOR_NEGATIVE, LOW);
+
+      digitalWrite(L_MOTOR_POSITIVE, LOW);
+      digitalWrite(L_MOTOR_POSITIVE, LOW);
+
+      analogWrite(L_MOTOR_ENABLE, MAX_SPEED_L);
+      analogWrite(R_MOTOR_ENABLE, MAX_SPEED_R);
+    }
     else if (incomingByte == 'B') {
-      //digitalWrite(LED_PIN, HIGH);
+      digitalWrite(13, HIGH);
       delay(1000);
-      //digitalWrite(LED_PIN, LOW);
+      digitalWrite(13, LOW);
     }
   }
 }
